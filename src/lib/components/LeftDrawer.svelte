@@ -53,6 +53,10 @@
             title: "Contacts",
             url: "/contacts",
           },
+          {
+            title: "Groups",
+            url: "/groups",
+          },
         ],
       },
       {
