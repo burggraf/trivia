@@ -1,17 +1,52 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
-  <!-- Background shape with soft, protective curves -->
-  <rect x="10" y="10" width="180" height="180" rx="30" ry="30" fill="#1E40AF"/>
-  
-  <!-- Shield symbol -->
-  <path d="M100 40 L150 70 L150 130 L100 160 L50 130 L50 70 Z" 
-        fill="#FFFFFF" 
-        opacity="0.9" 
-        stroke="#93C5FD" 
-        stroke-width="4"/>
-  
-  <!-- Larger lock symbol moved to center -->
-  <path d="M85 110 L115 110 L115 100 A15 15 0 0 0 85 100 Z" 
-        fill="#FFFFFF" 
-        stroke="#1E40AF" 
-        stroke-width="3"/>
+<svg
+    width="512"
+    height="512"
+    viewBox="0 0 512 512"
+    xmlns="http://www.w3.org/2000/svg"
+    style="background: none;"
+>
+    <!-- Define a linear gradient for the speech bubble background -->
+    <defs>
+        <linearGradient id="bubbleGradient" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#1c8ad9"/>
+            <stop offset="100%" stop-color="#005a9c"/>
+        </linearGradient>
+    </defs>
+
+    <!-- Speech bubble shape -->
+    <!-- A rounded rectangle with a small triangular tail -->
+    <path
+        d="
+            M 100,100
+            h 312
+            a 40,40 0 0 1 40,40
+            v 180
+            a 40,40 0 0 1 -40,40
+            h -182
+            l -28,48
+            a 12,12 0 0 1 -21,0
+            l -28,-48
+            h -53
+            a 40,40 0 0 1 -40,-40
+            v -180
+            a 40,40 0 0 1 40,-40
+            z
+        "
+        fill="url(#bubbleGradient)"
+    />
+
+    <!-- Central question mark -->
+    <!-- Bold, high-contrast, centered on the bubble -->
+    <text
+        x="50%"
+        y="46%"
+        text-anchor="middle"
+        font-size="200"
+        font-weight="bold"
+        font-family="sans-serif"
+        fill="#ffffff"
+        dominant-baseline="middle"
+    >
+        ?
+    </text>
 </svg>

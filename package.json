@@ -1,8 +1,8 @@
 {
-	"name": "property-manager",
+	"name": "trivia",
 	"version": "0.8.7",
-	"identifier": "com.azabab.app",
-	"description": "Azabab: Property Rental Manager",
+	"identifier": "com.dmarie.trivia",
+	"description": "Trivia Party",
 	"type": "module",
 	"scripts": {
 		"dev": "vite dev --host 0.0.0.0",
