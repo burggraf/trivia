@@ -63,7 +63,7 @@
   const handleSelectGroup = async (id: string) => {
     const success = await handleGroupChange(id);
     if (!success) {
-      console.error("Error switching groupanization");
+      console.error("Error switching group");
     }
   };
 </script>

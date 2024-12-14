@@ -42,7 +42,7 @@ export const group_user_update_role = async (
             if (userRole !== "Admin") {
                 return {
                     data: null,
-                    error: "User is not an admin of the groupanization",
+                    error: "User is not an admin of the group",
                 };
             }
         }

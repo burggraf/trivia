@@ -38,7 +38,7 @@ export const invite_insert = async (
         if (userRole !== "Admin") {
             return {
                 data: null,
-                error: "User is not an admin of the groupanization",
+                error: "User is not an admin of the group",
             };
         }
         // make sure user_role is a valid user role

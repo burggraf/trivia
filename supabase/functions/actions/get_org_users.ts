@@ -27,7 +27,7 @@ export const get_group_users = async (
         if (userRole !== "Admin") {
             return {
                 data: null,
-                error: "User is not an admin of the groupanization",
+                error: "User is not an admin of the group",
             };
         }
 

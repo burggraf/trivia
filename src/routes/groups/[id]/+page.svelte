@@ -61,7 +61,7 @@
     </Button>
   {/snippet}
   {#snippet TopCenter()}
-    {id === "new" ? "New Groupanization" : group?.title}
+    {id === "new" ? "New Group" : group?.title}
   {/snippet}
   {#snippet TopRight()}
     <!--
@@ -86,14 +86,14 @@
           {#if group?.user_role === "Admin"}
             <GroupUsers {group} />
           {:else}
-            <p><br />You are not an admin of this groupanization</p>
+            <p><br />You are not an admin of this group</p>
           {/if}
         </Tabs.Content>
         <Tabs.Content value="invites">
           {#if group?.user_role === "Admin"}
             <GroupsInvites {group} />
           {:else}
-            <p><br />You are not an admin of this groupanization</p>
+            <p><br />You are not an admin of this group</p>
           {/if}
         </Tabs.Content>
       </Tabs.Root>

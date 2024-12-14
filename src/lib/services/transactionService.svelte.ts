@@ -27,7 +27,7 @@ export async function upsertTransaction(
     }
 
     if (!currentGroup?.id) {
-        return { data: null, error: new Error("No groupanization selected") };
+        return { data: null, error: new Error("No group selected") };
     }
 
     // Ensure the transaction is associated with the current group
@@ -57,7 +57,7 @@ export async function upsertTransactionEvent(
     }
 
     if (!currentGroup?.id) {
-        return { data: null, error: new Error("No groupanization selected") };
+        return { data: null, error: new Error("No group selected") };
     }
 
     // Ensure the transaction is associated with the current group

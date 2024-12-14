@@ -1,4 +1,4 @@
--- Function to delete an groupanization and all related data
+-- Function to delete a group and all related data
 CREATE OR REPLACE FUNCTION get_group_users(group_id uuid)
     RETURNS TABLE(
         id uuid,
@@ -35,5 +35,5 @@ REVOKE EXECUTE ON FUNCTION get_group_users(UUID) FROM anon, authenticated;
 -- Uncomment and modify the following line if you want to grant access to a specific role
 -- GRANT EXECUTE ON FUNCTION delete_group(UUID) TO admin_role;
 -- Add a comment to the function
-COMMENT ON FUNCTION get_group_users(UUID) IS 'Gets a list of all users in an groupanization. This function should only be accessible to highly privileged roles.';
+COMMENT ON FUNCTION get_group_users(UUID) IS 'Gets a list of all users in a group. This function should only be accessible to highly privileged roles.';
 

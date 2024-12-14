@@ -20,7 +20,7 @@ export async function getGroupProperties(groupId: string): Promise<{
     error: Error | null;
 }> {
     if (!groupId) {
-        return { data: null, error: new Error("No groupanization selected") };
+        return { data: null, error: new Error("No group selected") };
     }
 
     const { data, error } = await supabase
@@ -45,7 +45,7 @@ export async function upsertProperty(
     }
 
     if (!groupId) {
-        return { data: null, error: new Error("No groupanization selected") };
+        return { data: null, error: new Error("No group selected") };
     }
 
     // Ensure the property is associated with the current group

@@ -88,8 +88,7 @@
 <Card.Root class="w-[350px] md:w-[500px]">
   <Card.Header>
     <Card.Title>Invites</Card.Title>
-    <Card.Description>Invitations to join this groupanization.</Card.Description
-    >
+    <Card.Description>Invitations to join this group.</Card.Description>
   </Card.Header>
   <Card.Content class="pl-4 pr-4 pt-0">
     <Table.Root>

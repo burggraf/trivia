@@ -90,7 +90,7 @@
     if (user.id === null) return;
     const result = await alertManager.show({
       title: "Confirm Remove User",
-      message: `Are you sure you want to remove ${user.email} from this groupanization?`,
+      message: `Are you sure you want to remove ${user.email} from this group?`,
       buttons: [
         { label: "Cancel", value: "cancel", variant: "outline" },
         { label: "Delete", value: "delete", variant: "destructive" },
@@ -109,7 +109,7 @@
       } else {
         // refresh the page here
         toast.success("SUCCESS", {
-          description: "User removed from groupanization",
+          description: "User removed from group",
         });
         setTimeout(() => {
           window.location.reload();
@@ -123,7 +123,7 @@
 <Card.Root class="w-[350px] md:w-[500px]">
   <Card.Header>
     <Card.Title>Users</Card.Title>
-    <Card.Description>Users of this groupanization.</Card.Description>
+    <Card.Description>Users of this group.</Card.Description>
   </Card.Header>
   <Card.Content class="pl-4 pr-4 pt-0">
     <Table.Root>

@@ -72,13 +72,13 @@
       return;
     }
 
-    loadingState.show("Saving groupanization...");
+    loadingState.show("Saving group...");
     const { data, error } = await saveGroup(group);
     loadingState.hide();
     if (error) {
       toast.error("ERROR", { description: (error as Error).message || error });
     } else {
-      toast.success("SUCCESS", { description: "Groupanization updated" });
+      toast.success("SUCCESS", { description: "Group updated" });
       isFormChanged = false;
       if (id === "new" && data && data.groupid) {
         if (data.groupid) {
@@ -105,7 +105,7 @@
     if (group === null) return;
     const result = await alertManager.show({
       title: "Confirm Delete",
-      message: "Are you sure you want to delete this groupanization?",
+      message: "Are you sure you want to delete this group?",
       buttons: [
         { label: "Cancel", value: "cancel", variant: "outline" },
         { label: "Delete", value: "delete", variant: "destructive" },
@@ -118,7 +118,7 @@
       const isCurrentGroup = currentGroup?.id === group.id;
 
       // Handle delete action
-      loadingState.show("Deleting groupanization...");
+      loadingState.show("Deleting group...");
       const {
         data: { data, error },
       } = await deleteGroup(group);
@@ -139,7 +139,7 @@
 
         loadingState.hide();
         setTimeout(() => {
-          toast.success("SUCCESS", { description: "Groupanization deleted" });
+          toast.success("SUCCESS", { description: "group deleted" });
         }, 500);
         goto("/groups");
       }
@@ -150,7 +150,7 @@
 <Card.Root class="w-[350px] md:w-[500px]">
   <Card.Header>
     <Card.Title>Details</Card.Title>
-    <Card.Description>Details of the groupanization.</Card.Description>
+    <Card.Description>Details of the group.</Card.Description>
   </Card.Header>
   <Card.Content>
     <form
@@ -166,7 +166,7 @@
           <Input
             id="title"
             value={group?.title ?? ""}
-            placeholder="Title of your groupanization"
+            placeholder="Title of your group"
             class={titleError ? "border-destructive" : ""}
             oninput={(e) => {
               if (group) group.title = e.currentTarget.value;

@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS "public"."groups"(
 
 ALTER TABLE "public"."groups" OWNER TO "postgres";
 
-COMMENT ON TABLE "public"."groups" IS 'Groupanizations';
+COMMENT ON TABLE "public"."groups" IS 'Groups';
 
 ALTER TABLE ONLY "public"."groups"
     ADD CONSTRAINT "groups_pkey" PRIMARY KEY ("id");

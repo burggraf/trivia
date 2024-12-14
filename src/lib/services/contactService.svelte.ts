@@ -21,7 +21,7 @@ export const getContacts = async () => {
         };
     }
     if (!currentGroup?.id) {
-        return { data: null, error: new Error("No groupanization selected") };
+        return { data: null, error: new Error("No group selected") };
     }
     const { data, error } = await supabase.from("contacts").select(
         "id, email, firstname, lastname, phone, created_at",
@@ -39,7 +39,7 @@ export const upsertContact = async (contact: Partial<Contact>) => {
         };
     }
     if (!currentGroup?.id) {
-        return { data: null, error: new Error("No groupanization selected") };
+        return { data: null, error: new Error("No group selected") };
     }
     const contactWithGroup = {
         ...contact,
@@ -68,7 +68,7 @@ export const deleteContact = async (id: string) => {
         };
     }
     if (!currentGroup?.id) {
-        return { data: null, error: new Error("No groupanization selected") };
+        return { data: null, error: new Error("No group selected") };
     }
     const { data, error } = await supabase.from("contacts").delete().eq(
         "id",
@@ -85,7 +85,7 @@ export const getContactById = async (id: string) => {
         };
     }
     if (!currentGroup?.id) {
-        return { data: null, error: new Error("No groupanization selected") };
+        return { data: null, error: new Error("No group selected") };
     }
     const { data, error } = await supabase.from("contacts").select("*").eq(
         "id",
@@ -102,7 +102,7 @@ export const getContactByEmail = async (email: string) => {
         };
     }
     if (!currentGroup?.id) {
-        return { data: null, error: new Error("No groupanization selected") };
+        return { data: null, error: new Error("No group selected") };
     }
     const { data, error } = await supabase.from("contacts").select("*").eq(
         "email",
@@ -119,7 +119,7 @@ export const searchContacts = async (query: string) => {
         };
     }
     if (!currentGroup?.id) {
-        return { data: null, error: new Error("No groupanization selected") };
+        return { data: null, error: new Error("No group selected") };
     }
     if (!query) {
         return { data: [], error: null };
