@@ -3,22 +3,22 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 import { getUser } from "../_shared/get_user.ts";
 
-import { org_delete } from "../actions/org_delete.ts";
-import { org_upsert } from "../actions/org_upsert.ts";
-import { org_user_delete } from "../actions/org_user_delete.ts";
-import { get_org_users } from "../actions/get_org_users.ts";
-import { org_user_update_role } from "../actions/org_user_update_role.ts";
+import { group_delete } from "../actions/group_delete.ts";
+import { group_upsert } from "../actions/group_upsert.ts";
+import { group_user_delete } from "../actions/group_user_delete.ts";
+import { get_group_users } from "../actions/get_group_users.ts";
+import { group_user_update_role } from "../actions/group_user_update_role.ts";
 import { invite_insert } from "../actions/invite_insert.ts";
 import { invite_delete } from "../actions/invite_delete.ts";
 import { invite_accept } from "../actions/invite_accept.ts";
 import { invite_reject } from "../actions/invite_reject.ts";
 import { property_geocode } from "../actions/property_geocode.ts";
 const actions = {
-    org_delete,
-    org_upsert,
-    org_user_delete,
-    get_org_users,
-    org_user_update_role,
+    group_delete,
+    group_upsert,
+    group_user_delete,
+    get_group_users,
+    group_user_update_role,
     invite_insert,
     invite_delete,
     invite_accept,

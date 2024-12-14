@@ -1,16 +1,16 @@
-CREATE OR REPLACE FUNCTION public.get_user_orgids(p_userid uuid)
+CREATE OR REPLACE FUNCTION public.get_my_groupids()
   RETURNS TABLE(
-    orgid uuid
+    groupid uuid
   )
   AS $$
 BEGIN
   RETURN QUERY
   SELECT
-    ou.orgid
+    ou.groupid
   FROM
-    public.orgs_users AS ou
+    public.groups_users AS ou
   WHERE
-    ou.userid = p_userid;
+    ou.userid = auth.uid();
 END;
 $$
 LANGUAGE plpgsql

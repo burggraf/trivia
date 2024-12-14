@@ -3,18 +3,18 @@
 
   import {
     updateUser,
-    getCurrentOrg,
-    updateCurrentOrg,
+    getCurrentGroup,
+    updateCurrentGroup,
     getUser,
   } from "$lib/services/backend.svelte";
   import { t } from "$lib/i18n/index";
   import { toast } from "svelte-sonner";
   import { Plus, CircleCheckBig, Circle } from "lucide-svelte";
-  import { fetchOrgs } from "$lib/services/orgService.svelte";
+  import { fetchGroups } from "@/services/groupService.svelte";
   import * as Table from "$lib/components/ui/table/index.js";
   import { goto } from "$app/navigation";
   import { Button } from "@/components/ui/button";
-  interface Org {
+  interface Group {
     id: string;
     title: string;
     created_at: string;
@@ -23,32 +23,32 @@
   }
   const user = $derived(getUser());
 
-  let orgs = $state([] as Org[]);
-  const currentOrg = $derived(getCurrentOrg());
+  let groups = $state([] as Group[]);
+  const currentGroup = $derived(getCurrentGroup());
   const load = async () => {
-    // const { data, error } = await getAllOrgs();
-    const { data, error } = await fetchOrgs();
+    // const { data, error } = await getAllGroups();
+    const { data, error } = await fetchGroups();
     if (error) {
     } else {
-      orgs = data;
+      groups = data;
     }
   };
-  async function handleOrgClick(org: Org) {
-    goto(`/orgs/${org.id}`);
+  async function handleGroupClick(group: Group) {
+    goto(`/groups/${group.id}`);
   }
   $effect(() => {
     load();
   });
 
-  async function handleNewOrgClick() {
-    await goto("/orgs/new");
+  async function handleNewGroupClick() {
+    await goto("/groups/new");
   }
 
-  async function handleSelectOrg(org: Org) {
-    await updateCurrentOrg(org.id);
+  async function handleSelectGroup(group: Group) {
+    await updateCurrentGroup(group.id);
   }
 
-  const headers = [{ key: "title", label: "orgs.title", sortable: true }];
+  const headers = [{ key: "title", label: "groups.title", sortable: true }];
   /*
 	const actionItems: any[] = [
 	  {
@@ -69,15 +69,15 @@
 <PageTemplate>
   <!--{#snippet TopLeft()}{/snippet}-->
   {#snippet TopCenter()}
-    {$t("org.listTitle")}
+    {$t("group.listTitle")}
   {/snippet}
   {#snippet TopRight()}
     <Button
       variant="ghost"
       size="icon"
-      onclick={handleNewOrgClick}
+      onclick={handleNewGroupClick}
       class="h-9 w-9"
-      aria-label={$t("org.addNew")}
+      aria-label={$t("group.addNew")}
     >
       <Plus class="w-6 h-6" />
     </Button>
@@ -87,31 +87,31 @@
     <div class="container mx-auto p-4">
       {#if user}
         <div class="space-y-6">
-          <!-- Current Org display -->
+          <!-- Current Group display -->
           <!--
           <div class="bg-secondary p-4 rounded-lg mb-4">
-            <h2 class="text-lg font-semibold mb-2">{$t("org.currentOrg")}</h2>
-            {#if currentOrg}
-              <p>{currentOrg.title}</p>
+            <h2 class="text-lg font-semibold mb-2">{$t("group.currentGroup")}</h2>
+            {#if currentGroup}
+              <p>{currentGroup.title}</p>
             {:else}
-              <p class="text-gray-500">{$t("org.noCurrentOrg")}</p>
+              <p class="text-gray-500">{$t("group.noCurrentGroup")}</p>
             {/if}
           </div>
 		  -->
           <!--
-          {#each orgs as org}
+          {#each groups as group}
             <Button
               type="button"
               class="w-full text-left"
-              onclick={() => handleOrgClick(org)}
-              onkeydown={(e) => e.key === "Enter" && handleOrgClick(org)}
+              onclick={() => handleGroupClick(group)}
+              onkeydown={(e) => e.key === "Enter" && handleGroupClick(group)}
             >
-              {org.title}
+              {group.title}
             </Button>
           {/each}
 		  -->
 
-          <!--<GenericList data={orgs} {headers} onRowClick={handleOrgClick} />-->
+          <!--<GenericList data={groups} {headers} onRowClick={handleGroupClick} />-->
           <Table.Root>
             <Table.Header>
               <Table.Row>
@@ -121,28 +121,28 @@
               </Table.Row>
             </Table.Header>
             <Table.Body>
-              {#each orgs as org, i (i)}
-                <Table.Row onclick={() => handleOrgClick(org)}>
+              {#each groups as group, i (i)}
+                <Table.Row onclick={() => handleGroupClick(group)}>
                   <Table.Cell class="w-[30px] text-center">
                     <Button
                       variant="ghost"
                       size="icon"
                       onclick={(e) => {
                         e.stopPropagation();
-                        handleSelectOrg(org);
+                        handleSelectGroup(group);
                       }}
                       class="h-12 w-12"
-                      aria-label={$t("org.addNew")}
+                      aria-label={$t("group.addNew")}
                     >
-                      {#if org.id === currentOrg?.id}
+                      {#if group.id === currentGroup?.id}
                         <CircleCheckBig class="w-6 h-6" />
                       {:else}
                         <Circle class="w-6 h-6" />
                       {/if}
                     </Button>
                   </Table.Cell>
-                  <Table.Cell class="font-medium">{org.title}</Table.Cell>
-                  <Table.Cell class="font-medium">{org.user_role}</Table.Cell>
+                  <Table.Cell class="font-medium">{group.title}</Table.Cell>
+                  <Table.Cell class="font-medium">{group.user_role}</Table.Cell>
                 </Table.Row>
               {/each}
             </Table.Body>

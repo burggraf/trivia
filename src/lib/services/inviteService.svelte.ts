@@ -7,28 +7,29 @@ import {
     FunctionsRelayError,
 } from "@supabase/supabase-js";
 import { handleServerFunctionResponse } from "$lib/utils/errorHandling";
-export type Invite = Database["public"]["Tables"]["orgs_invites"]["Insert"];
+export type Invite = Database["public"]["Tables"]["groups_invites"]["Insert"];
 
 export const getPendingInviteCount = async () => {
     if (!user) {
         return { data: 0, error: "user not found" };
     }
     const { count, error } = await supabase
-        .from("orgs_invites")
+        .from("groups_invites")
         .select("*", { count: "exact", head: true })
         .eq("email", user.email);
     return { data: count, error };
 };
-export const getInvites = async (orgid: string) => {
-    const { data, error } = await supabase.from("orgs_invites").select("*").eq(
-        "orgid",
-        orgid,
-    );
+export const getInvites = async (groupid: string) => {
+    const { data, error } = await supabase.from("groups_invites").select("*")
+        .eq(
+            "groupid",
+            groupid,
+        );
     return { data, error };
 };
 
 export const createInvite = async (
-    orgid: string,
+    groupid: string,
     email: string,
     user_role: string,
 ) => {
@@ -38,7 +39,7 @@ export const createInvite = async (
             body: {
                 action: "invite_insert",
                 payload: {
-                    orgid,
+                    groupid,
                     email,
                     user_role,
                 },
@@ -98,10 +99,10 @@ export const getPendingInvites = async () => {
         return { data: null, error: "user not found" };
     }
     const { data, error } = await supabase
-        .from("orgs_invites")
+        .from("groups_invites")
         .select(`
             id,            
-            orgs (
+            groups (
                 title
             ),
             created_by:created_by (

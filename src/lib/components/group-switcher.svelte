@@ -5,65 +5,65 @@
   import LoginModal from "$lib/components/LoginModal.svelte";
   import { ChevronsUpDown, Plus, UserPlus } from "lucide-svelte";
   import {
-    getCurrentOrg,
+    getCurrentGroup,
     getUser,
-    updateCurrentOrg,
+    updateCurrentGroup,
   } from "$lib/services/backend.svelte";
-  import { fetchOrgs } from "$lib/services/orgService.svelte";
+  import { fetchGroups } from "@/services/groupService.svelte";
   import { Star } from "lucide-svelte";
   import { goto } from "$app/navigation";
-  interface Org {
+  interface Group {
     id: string;
     title: string;
     created_at: string;
     metadata: any;
     user_role: string;
   }
-  const org: Org | null = $derived(getCurrentOrg());
+  const group: Group | null = $derived(getCurrentGroup());
   const user = $derived(getUser());
 
-  let orgs = $state([] as Org[]);
+  let groups = $state([] as Group[]);
   let showLoginModal = $state(false);
   let isInitialized = $state(false);
 
   const sidebar = useSidebar();
   const load = async () => {
-    const { data, error } = await fetchOrgs();
+    const { data, error } = await fetchGroups();
     if (error) {
-      console.error("Error fetching orgs:", error);
-      orgs = [];
+      console.error("Error fetching groups:", error);
+      groups = [];
     } else {
-      orgs = data;
-      // Only try to select first org if we've confirmed there's no current org after initialization
-      if (isInitialized && !org && orgs.length > 0) {
-        handleSelectOrg(orgs[0].id);
+      groups = data;
+      // Only try to select first group if we've confirmed there's no current group after initialization
+      if (isInitialized && !group && groups.length > 0) {
+        handleSelectGroup(groups[0].id);
       }
     }
   };
 
-  // Track when org state is initialized
+  // Track when group state is initialized
   $effect(() => {
-    if (org !== undefined) {
+    if (group !== undefined) {
       isInitialized = true;
     }
   });
 
-  // Reload orgs when user changes
+  // Reload groups when user changes
   $effect(() => {
     if (user) {
       load();
     } else {
-      orgs = [];
+      groups = [];
       isInitialized = false;
     }
   });
-  async function handleOrgChange(id: string) {
-    return await updateCurrentOrg(id);
+  async function handleGroupChange(id: string) {
+    return await updateCurrentGroup(id);
   }
-  const handleSelectOrg = async (id: string) => {
-    const success = await handleOrgChange(id);
+  const handleSelectGroup = async (id: string) => {
+    const success = await handleGroupChange(id);
     if (!success) {
-      console.error("Error switching organization");
+      console.error("Error switching groupanization");
     }
   };
 </script>
@@ -87,9 +87,9 @@
             </div>
             <div class="grid flex-1 text-left text-sm leading-tight">
               <span class="truncate font-semibold">
-                {org?.title || "No Org Selected"}
+                {group?.title || "No Group Selected"}
               </span>
-              <span class="truncate text-xs">{org?.user_role}</span>
+              <span class="truncate text-xs">{group?.user_role}</span>
             </div>
             <ChevronsUpDown class="ml-auto" />
           </Sidebar.MenuButton>
@@ -102,12 +102,12 @@
         sideOffset={4}
       >
         <DropdownMenu.Label class="text-muted-foreground text-xs"
-          >Orgs</DropdownMenu.Label
+          >Groups</DropdownMenu.Label
         >
-        {#each orgs as o, index}
+        {#each groups as o, index}
           <DropdownMenu.Item
             onSelect={() => {
-              handleSelectOrg(o.id);
+              handleSelectGroup(o.id);
             }}
             class="gap-2 p-2"
           >
@@ -123,7 +123,7 @@
           <DropdownMenu.Item
             class="gap-2 p-2"
             onclick={() => {
-              goto("/orgs/new");
+              goto("/groups/new");
             }}
           >
             <div
@@ -131,7 +131,7 @@
             >
               <Plus class="size-4" />
             </div>
-            <div class="text-muted-foreground font-medium">Add New Org</div>
+            <div class="text-muted-foreground font-medium">Add New Group</div>
           </DropdownMenu.Item>
         {:else}
           <DropdownMenu.Item
@@ -146,7 +146,7 @@
               <UserPlus class="size-4" />
             </div>
             <div class="text-muted-foreground font-medium">
-              Login to see your orgs
+              Login to see your groups
             </div>
           </DropdownMenu.Item>
         {/if}

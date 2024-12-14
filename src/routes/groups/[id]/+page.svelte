@@ -1,20 +1,20 @@
 <script lang="ts">
   import PageTemplate from "$lib/components/PageTemplate.svelte";
   import { page } from "$app/stores";
-  import { getOrgById, getOrgUsers } from "$lib/services/orgService.svelte";
+  import { getGroupById, getGroupUsers } from "@/services/groupService.svelte";
 
   import { goto } from "$app/navigation";
   import { ArrowLeft } from "lucide-svelte";
   import { Button } from "$lib/components/ui/button";
   import { toast } from "svelte-sonner";
-  import OrgDetails from "./OrgDetails.svelte";
-  import OrgUsers from "./OrgUsers.svelte";
-  import OrgsInvites from "./OrgsInvites.svelte";
+  import GroupDetails from "./GroupDetails.svelte";
+  import GroupUsers from "./GroupUsers.svelte";
+  import GroupsInvites from "./GroupInvites.svelte";
   import * as Tabs from "$lib/components/ui/tabs/index.js";
   import { getUser } from "$lib/services/backend.svelte";
   const user = $derived(getUser());
 
-  interface Org {
+  interface Group {
     id: string;
     title: string;
     created_at: string;
@@ -22,21 +22,21 @@
     user_role: string;
   }
   const id = $derived($page.params.id);
-  let org = $state<Org | null>(null);
+  let group = $state<Group | null>(null);
   //let users = $state<any[] | null>(null);
 
   const load = async () => {
     if (!user) return;
     if (id !== "new") {
-      const { data, error } = await getOrgById(id);
+      const { data, error } = await getGroupById(id);
       if (error) {
-        console.error("getOrgById error", error);
+        console.error("getGroupById error", error);
         toast.error("ERROR", { description: (error as Error).message });
       } else {
         if (data) {
-          org = data;
+          group = data;
         } else {
-          org = null;
+          group = null;
         }
       }
     }
@@ -53,7 +53,7 @@
       variant="ghost"
       size="icon"
       onclick={() => {
-        goto("/orgs");
+        goto("/groups");
       }}
       class="h-9 w-9"
     >
@@ -61,7 +61,7 @@
     </Button>
   {/snippet}
   {#snippet TopCenter()}
-    {id === "new" ? "New Organization" : org?.title}
+    {id === "new" ? "New Groupanization" : group?.title}
   {/snippet}
   {#snippet TopRight()}
     <!--
@@ -80,20 +80,20 @@
           <Tabs.Trigger value="invites">Invites</Tabs.Trigger>
         </Tabs.List>
         <Tabs.Content value="details">
-          <OrgDetails {org} />
+          <GroupDetails {group} />
         </Tabs.Content>
         <Tabs.Content value="users">
-          {#if org?.user_role === "Admin"}
-            <OrgUsers {org} />
+          {#if group?.user_role === "Admin"}
+            <GroupUsers {group} />
           {:else}
-            <p><br />You are not an admin of this organization</p>
+            <p><br />You are not an admin of this groupanization</p>
           {/if}
         </Tabs.Content>
         <Tabs.Content value="invites">
-          {#if org?.user_role === "Admin"}
-            <OrgsInvites {org} />
+          {#if group?.user_role === "Admin"}
+            <GroupsInvites {group} />
           {:else}
-            <p><br />You are not an admin of this organization</p>
+            <p><br />You are not an admin of this groupanization</p>
           {/if}
         </Tabs.Content>
       </Tabs.Root>

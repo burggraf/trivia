@@ -1,11 +1,11 @@
 <script lang="ts">
   import {
-    saveOrg,
-    deleteOrg,
-    getOrgById,
-    fetchOrgs,
-  } from "$lib/services/orgService.svelte";
-  import type { Org } from "$lib/services/orgService.svelte";
+    saveGroup,
+    deleteGroup,
+    getGroupById,
+    fetchGroups,
+  } from "@/services/groupService.svelte";
+  import type { Group } from "@/services/groupService.svelte";
   import { goto } from "$app/navigation";
   import * as Card from "$lib/components/ui/card/index.js";
   import { Label } from "$lib/components/ui/label";
@@ -17,23 +17,27 @@
   import CancelButton from "@/components/iconbuttons/CancelButton.svelte";
   import { loadingState } from "$lib/components/loading/loading-state.svelte.ts";
   import { page } from "$app/stores";
-  import { updateCurrentOrg, getCurrentOrg, getUser } from "@/services/backend.svelte";
+  import {
+    updateCurrentGroup,
+    getCurrentGroup,
+    getUser,
+  } from "@/services/backend.svelte";
 
   const id = $derived($page.params.id);
   const user = $derived(getUser());
 
-  let { org } = $props<{
-    org: Org | null;
+  let { group } = $props<{
+    group: Group | null;
   }>();
-  //let org = $state<Org | null>(null);
+  //let group = $state<Group | null>(null);
   let titleError = $state("");
   let isFormChanged = $state(false);
 
-  // let org = $state<Org | null>(null);
+  // let group = $state<Group | null>(null);
 
   const load = async () => {
     if (id === "new") {
-      org = {
+      group = {
         title: "",
         created_at: "",
         id: "",
@@ -41,8 +45,8 @@
       };
       return;
     } else {
-      const { data, error } = await getOrgById(id);
-      org = data;
+      const { data, error } = await getGroupById(id);
+      group = data;
       return data;
     }
   };
@@ -62,30 +66,30 @@
     isFormChanged = true;
   }
   async function handleSubmit() {
-    if (!org) return;
+    if (!group) return;
 
-    if (!validateTitle(org.title)) {
+    if (!validateTitle(group.title)) {
       return;
     }
 
-    loadingState.show("Saving organization...");
-    const { data, error } = await saveOrg(org);
+    loadingState.show("Saving groupanization...");
+    const { data, error } = await saveGroup(group);
     loadingState.hide();
     if (error) {
       toast.error("ERROR", { description: (error as Error).message || error });
     } else {
-      toast.success("SUCCESS", { description: "Organization updated" });
+      toast.success("SUCCESS", { description: "Groupanization updated" });
       isFormChanged = false;
-      if (id === "new" && data && data.orgid) {
-        if (data.orgid) {
-          await updateCurrentOrg(data.orgid);
-          goto(`/orgs/${data.orgid}`);
+      if (id === "new" && data && data.groupid) {
+        if (data.groupid) {
+          await updateCurrentGroup(data.groupid);
+          goto(`/groups/${data.groupid}`);
         } else {
-          goto("/orgs");
+          goto("/groups");
         }
       } else {
-        await updateCurrentOrg(id);
-        goto(`/orgs/${id}`);
+        await updateCurrentGroup(id);
+        goto(`/groups/${id}`);
       }
     }
   }
@@ -98,10 +102,10 @@
     }
   }
   async function handleDelete() {
-    if (org === null) return;
+    if (group === null) return;
     const result = await alertManager.show({
       title: "Confirm Delete",
-      message: "Are you sure you want to delete this organization?",
+      message: "Are you sure you want to delete this groupanization?",
       buttons: [
         { label: "Cancel", value: "cancel", variant: "outline" },
         { label: "Delete", value: "delete", variant: "destructive" },
@@ -109,35 +113,35 @@
     });
 
     if (result === "delete") {
-      // Store current org before deletion
-      const currentOrg = getCurrentOrg();
-      const isCurrentOrg = currentOrg?.id === org.id;
+      // Store current group before deletion
+      const currentGroup = getCurrentGroup();
+      const isCurrentGroup = currentGroup?.id === group.id;
 
       // Handle delete action
-      loadingState.show("Deleting organization...");
+      loadingState.show("Deleting groupanization...");
       const {
         data: { data, error },
-      } = await deleteOrg(org);
-      
+      } = await deleteGroup(group);
+
       if (error) {
         loadingState.hide();
         toast.error("ERROR", { description: (error as Error).message });
       } else {
-        // Only fetch and select new org if we deleted the current org
-        if (isCurrentOrg) {
-          const { data: orgs, error: orgsError } = await fetchOrgs();
-          if (orgsError) {
-            console.error("Error fetching orgs after deletion:", orgsError);
-          } else if (orgs && orgs.length > 0) {
-            await updateCurrentOrg(orgs[0].id);
+        // Only fetch and select new group if we deleted the current group
+        if (isCurrentGroup) {
+          const { data: groups, error: groupsError } = await fetchGroups();
+          if (groupsError) {
+            console.error("Error fetching groups after deletion:", groupsError);
+          } else if (groups && groups.length > 0) {
+            await updateCurrentGroup(groups[0].id);
           }
         }
-        
+
         loadingState.hide();
         setTimeout(() => {
-          toast.success("SUCCESS", { description: "Organization deleted" });
+          toast.success("SUCCESS", { description: "Groupanization deleted" });
         }, 500);
-        goto("/orgs");
+        goto("/groups");
       }
     }
   }
@@ -146,7 +150,7 @@
 <Card.Root class="w-[350px] md:w-[500px]">
   <Card.Header>
     <Card.Title>Details</Card.Title>
-    <Card.Description>Details of the organization.</Card.Description>
+    <Card.Description>Details of the groupanization.</Card.Description>
   </Card.Header>
   <Card.Content>
     <form
@@ -161,11 +165,11 @@
           <Label for="name">Title</Label>
           <Input
             id="title"
-            value={org?.title ?? ""}
-            placeholder="Title of your organization"
+            value={group?.title ?? ""}
+            placeholder="Title of your groupanization"
             class={titleError ? "border-destructive" : ""}
             oninput={(e) => {
-              if (org) org.title = e.currentTarget.value;
+              if (group) group.title = e.currentTarget.value;
               validateTitle(e.currentTarget.value);
             }}
           />
@@ -179,7 +183,7 @@
             <Input
               id="name"
               disabled
-              value={org?.created_at?.substring(0, 10) ?? ""}
+              value={group?.created_at?.substring(0, 10) ?? ""}
             />
           </div>
         {/if}
@@ -187,7 +191,7 @@
     </form>
   </Card.Content>
   <Card.Footer class="flex justify-between">
-    {#if id !== "new" && org?.id !== user?.id}
+    {#if id !== "new" && group?.id !== user?.id}
       <DeleteButton onclick={handleDelete} />
     {/if}
     {#if isFormChanged}

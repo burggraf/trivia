@@ -1,4 +1,4 @@
-CREATE OR REPLACE FUNCTION public.get_my_orgs()
+CREATE OR REPLACE FUNCTION public.get_my_groups()
   RETURNS TABLE(
     id uuid,
     title text,
@@ -10,16 +10,16 @@ CREATE OR REPLACE FUNCTION public.get_my_orgs()
 BEGIN
   RETURN QUERY
   SELECT
-    orgs.id,
-    orgs.title,
-    orgs.created_at,
-    orgs.metadata,
-    orgs_users.user_role
+    groups.id,
+    groups.title,
+    groups.created_at,
+    groups.metadata,
+    groups_users.user_role
   FROM
-    orgs
-    JOIN orgs_users ON orgs.id = orgs_users.orgid
+    GROUPS
+    JOIN groups_users ON groups.id = groups_users.groupid
   WHERE
-    orgs_users.userid = auth.uid();
+    groups_users.userid = auth.uid();
 END;
 $$
 LANGUAGE plpgsql

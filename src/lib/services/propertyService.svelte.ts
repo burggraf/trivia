@@ -6,27 +6,27 @@ import {
     FunctionsRelayError,
 } from "@supabase/supabase-js";
 import type { User } from "@supabase/supabase-js";
-import type { Org } from "./backend.svelte.ts";
-import { getCurrentOrg, getUser } from "./backend.svelte.ts";
+import type { Group } from "./backend.svelte.ts";
+import { getCurrentGroup, getUser } from "./backend.svelte.ts";
 const user: User | null = $derived(getUser());
-const currentOrg: Org | null = $derived(getCurrentOrg());
+const currentGroup: Group | null = $derived(getCurrentGroup());
 
 export type Property = Database["public"]["Tables"]["properties"]["Insert"];
 export type PropertyContact =
     Database["public"]["Tables"]["properties_contacts"]["Insert"];
 
-export async function getOrgProperties(orgId: string): Promise<{
+export async function getGroupProperties(groupId: string): Promise<{
     data: Property[] | null;
     error: Error | null;
 }> {
-    if (!orgId) {
-        return { data: null, error: new Error("No organization selected") };
+    if (!groupId) {
+        return { data: null, error: new Error("No groupanization selected") };
     }
 
     const { data, error } = await supabase
         .from("properties")
         .select("*")
-        .eq("orgid", orgId)
+        .eq("groupid", groupId)
         .order("created_at", { ascending: false });
 
     return { data, error };
@@ -34,7 +34,7 @@ export async function getOrgProperties(orgId: string): Promise<{
 
 export async function upsertProperty(
     user: User,
-    orgId: string,
+    groupId: string,
     property: Partial<Property>,
 ): Promise<{ data: Property | null; error: Error | null }> {
     if (!user) {
@@ -44,20 +44,20 @@ export async function upsertProperty(
         };
     }
 
-    if (!orgId) {
-        return { data: null, error: new Error("No organization selected") };
+    if (!groupId) {
+        return { data: null, error: new Error("No groupanization selected") };
     }
 
-    // Ensure the property is associated with the current org
-    const propertyWithOrg = {
+    // Ensure the property is associated with the current group
+    const propertyWithGroup = {
         ...property,
-        orgid: orgId,
+        groupid: groupId,
         userid: user.id,
     };
 
     const { data, error } = await supabase
         .from("properties")
-        .upsert(propertyWithOrg)
+        .upsert(propertyWithGroup)
         .select()
         .single();
 

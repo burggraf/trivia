@@ -3,7 +3,7 @@ import type { User } from "@supabase/supabase-js";
 import { getUserRole } from "../_shared/get_user_role.ts";
 // import type { Invite } from "$lib/services/inviteService.svelte.ts";
 interface Payload {
-    orgid: string | null;
+    groupid: string | null;
     email: string | null;
     user_role: string | null;
 }
@@ -16,9 +16,9 @@ export const invite_insert = async (
             return { data: null, error: "User not found" };
         }
         // Get the title from the request body
-        const { orgid, email, user_role } = payload;
-        if (!orgid || typeof orgid !== "string") {
-            return { data: null, error: "orgid is required" };
+        const { groupid, email, user_role } = payload;
+        if (!groupid || typeof groupid !== "string") {
+            return { data: null, error: "groupid is required" };
         }
         if (!email || typeof email !== "string") {
             return { data: null, error: "email is required" };
@@ -27,9 +27,9 @@ export const invite_insert = async (
             return { data: null, error: "user_role is required" };
         }
 
-        // check to make sure the user is an admin of the org
+        // check to make sure the user is an admin of the group
         const { data: userRole, error: userRoleError } = await getUserRole(
-            orgid,
+            groupid,
             user.id,
         );
         if (userRoleError) {
@@ -38,7 +38,7 @@ export const invite_insert = async (
         if (userRole !== "Admin") {
             return {
                 data: null,
-                error: "User is not an admin of the organization",
+                error: "User is not an admin of the groupanization",
             };
         }
         // make sure user_role is a valid user role
@@ -50,12 +50,12 @@ export const invite_insert = async (
         ) {
             return { data: null, error: "user_role is not valid" };
         }
-        // check to make sure the email is not already in the orgs_invites table
+        // check to make sure the email is not already in the groups_invites table
         const { data: existingUser, error: existingUserError } = await supabase
-            .from("orgs_invites")
+            .from("groups_invites")
             .select("*")
             .eq("email", email)
-            .eq("orgid", orgid);
+            .eq("groupid", groupid);
         if (existingUserError) {
             return { data: null, error: existingUserError };
         }
@@ -66,11 +66,11 @@ export const invite_insert = async (
             };
         }
 
-        // Insert new orgs_users row
+        // Insert new groups_users row
         const { data: insertData, error: insertError } = await supabase
-            .from("orgs_invites")
+            .from("groups_invites")
             .insert({
-                orgid: orgid,
+                groupid: groupid,
                 created_by: user.id,
                 email: email,
                 user_role: user_role,

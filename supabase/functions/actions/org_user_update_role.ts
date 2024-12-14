@@ -2,10 +2,10 @@ import { supabase } from "../_shared/supabase_client.ts";
 import type { User } from "@supabase/supabase-js";
 import { getUserRole } from "../_shared/get_user_role.ts";
 interface Payload {
-    id: string; // orgs_users id
+    id: string; // groups_users id
     user_role: string;
 }
-export const org_user_update_role = async (
+export const group_user_update_role = async (
     payload: Payload,
     user: User | null,
 ): Promise<{ data: unknown; error: unknown | null }> => {
@@ -17,23 +17,23 @@ export const org_user_update_role = async (
         const id = payload.id;
         const user_role = payload.user_role;
 
-        // get the org for this orgs_users record
-        const { data: org, error: orgError } = await supabase
-            .from("orgs_users")
-            .select("orgid")
+        // get the group for this groups_users record
+        const { data: group, error: groupError } = await supabase
+            .from("groups_users")
+            .select("groupid")
             .eq("id", id)
             .single();
-        if (orgError) {
-            return { data: null, error: orgError };
+        if (groupError) {
+            return { data: null, error: groupError };
         }
-        const orgid = org.orgid;
-        if (!orgid) {
-            return { data: null, error: "Org not found" };
+        const groupid = group.groupid;
+        if (!groupid) {
+            return { data: null, error: "Group not found" };
         }
 
-        if (orgid) {
+        if (groupid) {
             const { data: userRole, error: userRoleError } = await getUserRole(
-                orgid,
+                groupid,
                 user.id,
             );
             if (userRoleError) {
@@ -42,14 +42,14 @@ export const org_user_update_role = async (
             if (userRole !== "Admin") {
                 return {
                     data: null,
-                    error: "User is not an admin of the organization",
+                    error: "User is not an admin of the groupanization",
                 };
             }
         }
 
-        // Insert new orgs_users row
+        // Insert new groups_users row
         const { data: updateData, error: updateError } = await supabase
-            .from("orgs_users")
+            .from("groups_users")
             .update({ user_role })
             .eq("id", id)
             .select()

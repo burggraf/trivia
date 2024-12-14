@@ -11,7 +11,7 @@
 
   type Invitation = {
     id: string;
-    orgs: { title: string }[];
+    groups: { title: string }[];
     created_by: { email: string; firstname: string; lastname: string }[];
     created_at: string;
   };
@@ -108,7 +108,7 @@
         {:else}
           {#each invitations as invitation}
             <div class="mb-4 rounded-lg border p-4">
-              <h3 class="font-medium">{invitation.orgs.title}</h3>
+              <h3 class="font-medium">{invitation.groups.title}</h3>
               <p class="text-sm text-muted-foreground">
                 {$t("invitationsModal.invitedBy", {
                   email: invitation.created_by.email,

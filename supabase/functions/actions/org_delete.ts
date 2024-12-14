@@ -4,7 +4,7 @@ import { getUserRole } from "../_shared/get_user_role.ts";
 interface Payload {
     id: string;
 }
-export const org_delete = async (
+export const group_delete = async (
     payload: Payload,
     user: User | null,
 ): Promise<{ data: unknown; error: unknown | null }> => {
@@ -15,7 +15,7 @@ export const org_delete = async (
         // Get the title from the request body
         const id = payload.id;
 
-        // Insert new org
+        // Insert new group
 
         const { data: userRole, error: userRoleError } = await getUserRole(
             id,
@@ -27,13 +27,13 @@ export const org_delete = async (
         if (userRole !== "Admin") {
             return {
                 data: null,
-                error: "User is not an admin of the organization",
+                error: "User is not an admin of the groupanization",
             };
         }
 
-        // Insert new orgs_users row
+        // Insert new groups_users row
         const { data: deleteData, error: deleteError } = await supabase
-            .from("orgs")
+            .from("groups")
             .delete()
             .eq("id", id)
             .select()

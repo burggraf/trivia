@@ -6,10 +6,10 @@ import {
     FunctionsRelayError,
 } from "@supabase/supabase-js";
 import { getUser } from "$lib/services/backend.svelte.ts";
-import { getCurrentOrg } from "./backend.svelte.ts";
-import type { Org } from "./backend.svelte.ts";
+import { getCurrentGroup } from "./backend.svelte.ts";
+import type { Group } from "./backend.svelte.ts";
 const user = $derived(getUser());
-const currentOrg: Org | null = $derived(getCurrentOrg());
+const currentGroup: Group | null = $derived(getCurrentGroup());
 
 export type Transaction =
     Database["public"]["Tables"]["transactions"]["Insert"];
@@ -26,20 +26,20 @@ export async function upsertTransaction(
         };
     }
 
-    if (!currentOrg?.id) {
-        return { data: null, error: new Error("No organization selected") };
+    if (!currentGroup?.id) {
+        return { data: null, error: new Error("No groupanization selected") };
     }
 
-    // Ensure the transaction is associated with the current org
-    const transactionWithOrg = {
+    // Ensure the transaction is associated with the current group
+    const transactionWithGroup = {
         ...transaction,
-        orgid: currentOrg.id,
+        groupid: currentGroup.id,
         userid: user.id,
     };
 
     const { data, error } = await supabase
         .from("transactions")
-        .upsert(transactionWithOrg)
+        .upsert(transactionWithGroup)
         .select()
         .single();
 
@@ -56,20 +56,20 @@ export async function upsertTransactionEvent(
         };
     }
 
-    if (!currentOrg?.id) {
-        return { data: null, error: new Error("No organization selected") };
+    if (!currentGroup?.id) {
+        return { data: null, error: new Error("No groupanization selected") };
     }
 
-    // Ensure the transaction is associated with the current org
-    const transactionEventWithOrg = {
+    // Ensure the transaction is associated with the current group
+    const transactionEventWithGroup = {
         ...transactionEvent,
-        orgid: currentOrg.id,
+        groupid: currentGroup.id,
         userid: user.id,
     };
 
     const { data, error } = await supabase
         .from("transactions_events")
-        .upsert(transactionEventWithOrg)
+        .upsert(transactionEventWithGroup)
         .select()
         .single();
 

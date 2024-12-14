@@ -1,11 +1,11 @@
 <script lang="ts">
   import DeleteButton from "$lib/components/iconbuttons/DeleteButton.svelte";
-  import type { Org } from "$lib/services/orgService.svelte";
+  import type { Group } from "@/services/groupService.svelte";
   import {
-    deleteOrgUser,
-    getOrgUsers,
+    deleteGroupUser,
+    getGroupUsers,
     updateUserRole,
-  } from "$lib/services/orgService.svelte";
+  } from "@/services/groupService.svelte";
   import * as Card from "$lib/components/ui/card/index.js";
   import * as Table from "$lib/components/ui/table/index.js";
   import RoleSelector from "./RoleSelector.svelte";
@@ -15,17 +15,17 @@
   import { getUser } from "$lib/services/backend.svelte";
   const user = $derived(getUser());
 
-  let { org } = $props<{
-    org: Org | null;
+  let { group } = $props<{
+    group: Group | null;
   }>();
 
   let users = $state<any[]>([]);
 
   async function load() {
-    if (org) {
-      const { data, error } = await getOrgUsers(org);
+    if (group) {
+      const { data, error } = await getGroupUsers(group);
       if (error) {
-        console.error("getOrgUsers error", error);
+        console.error("getGroupUsers error", error);
         users = [];
       } else {
         const tempUsers = [];
@@ -80,7 +80,7 @@
         setTimeout(() => {
           window.location.reload();
         }, 1000);*/
-        // goto("/orgs");
+        // goto("/groups");
       }
     }
   }
@@ -90,7 +90,7 @@
     if (user.id === null) return;
     const result = await alertManager.show({
       title: "Confirm Remove User",
-      message: `Are you sure you want to remove ${user.email} from this organization?`,
+      message: `Are you sure you want to remove ${user.email} from this groupanization?`,
       buttons: [
         { label: "Cancel", value: "cancel", variant: "outline" },
         { label: "Delete", value: "delete", variant: "destructive" },
@@ -101,7 +101,7 @@
       // Handle delete action
       const {
         data: { data, error },
-      } = await deleteOrgUser(user.id);
+      } = await deleteGroupUser(user.id);
       if (error) {
         toast.error("ERROR", {
           description: (error as Error).message,
@@ -109,12 +109,12 @@
       } else {
         // refresh the page here
         toast.success("SUCCESS", {
-          description: "User removed from organization",
+          description: "User removed from groupanization",
         });
         setTimeout(() => {
           window.location.reload();
         }, 1000);
-        // goto("/orgs");
+        // goto("/groups");
       }
     }
   }
@@ -123,7 +123,7 @@
 <Card.Root class="w-[350px] md:w-[500px]">
   <Card.Header>
     <Card.Title>Users</Card.Title>
-    <Card.Description>Users of this organization.</Card.Description>
+    <Card.Description>Users of this groupanization.</Card.Description>
   </Card.Header>
   <Card.Content class="pl-4 pr-4 pt-0">
     <Table.Root>

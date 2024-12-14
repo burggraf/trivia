@@ -1,6 +1,6 @@
 <script lang="ts">
   import DeleteButton from "$lib/components/iconbuttons/DeleteButton.svelte";
-  import type { Org } from "$lib/services/orgService.svelte";
+  import type { Group } from "@/services/groupService.svelte";
   import * as Card from "$lib/components/ui/card/index.js";
   import * as Table from "$lib/components/ui/table/index.js";
   import AddButton from "$lib/components/iconbuttons/AddButton.svelte";
@@ -18,14 +18,14 @@
 
   const user = $derived(getUser());
 
-  let { org } = $props<{
-    org: Org | null;
+  let { group } = $props<{
+    group: Group | null;
   }>();
 
   let invites = $state<Invite[]>([]);
   const load = async () => {
-    if (!org) return;
-    const { data, error } = await getInvites(org.id);
+    if (!group) return;
+    const { data, error } = await getInvites(group.id);
     invites = data || [];
   };
   $effect(() => {
@@ -68,11 +68,11 @@
       return;
     }
     loadingState.show("Creating invite...");
-    console.log("handleAdd", org.id, newInviteEmail, selectedRole);
+    console.log("handleAdd", group.id, newInviteEmail, selectedRole);
     const {
       data: { data, error },
       error: createError,
-    } = await createInvite(org.id, newInviteEmail, selectedRole);
+    } = await createInvite(group.id, newInviteEmail, selectedRole);
     loadingState.hide();
     if (error) {
       toast.error("ERROR", { description: error.message || error });
@@ -88,7 +88,8 @@
 <Card.Root class="w-[350px] md:w-[500px]">
   <Card.Header>
     <Card.Title>Invites</Card.Title>
-    <Card.Description>Invitations to join this organization.</Card.Description>
+    <Card.Description>Invitations to join this groupanization.</Card.Description
+    >
   </Card.Header>
   <Card.Content class="pl-4 pr-4 pt-0">
     <Table.Root>
@@ -120,7 +121,7 @@
             </Table.Row>
           {/each}
 
-          {#if org}
+          {#if group}
             <Table.Row>
               <Table.Cell
                 class="w-[44px] max-w-[44px] m-0 p-0 hidden md:table-cell"

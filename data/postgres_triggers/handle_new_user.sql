@@ -6,7 +6,7 @@ DECLARE
     first_name text;
     last_name text;
     name_parts text[];
-    new_org_id uuid;
+    new_group_id uuid;
 BEGIN
     full_name := NULLIF(TRIM(COALESCE(NEW.raw_user_meta_data ->> 'full_name', '')), '');
     IF full_name IS NOT NULL THEN
@@ -23,16 +23,16 @@ BEGIN
     -- Insert into public.profiles
     INSERT INTO public.profiles(id, email, firstname, lastname)
         VALUES (NEW.id, NEW.email, first_name, last_name);
-    -- Create the org title
+    -- Create the group title
     full_name := NULLIF(TRIM(CONCAT(first_name, ' ', last_name)), '');
-    -- Insert into public.orgs and get the new org id
-    INSERT INTO public.orgs(id, title)
-        VALUES (NEW.id, CONCAT(COALESCE(full_name, 'New User'), '''s Org'))
+    -- Insert into public.groups and get the new group id
+    INSERT INTO public.groups(id, title)
+        VALUES (NEW.id, CONCAT(COALESCE(full_name, 'New User'), '''s Group'))
     RETURNING
-        id INTO new_org_id;
-    -- Insert into public.orgs_users
-    INSERT INTO public.orgs_users(orgid, userid, user_role)
-        VALUES (new_org_id, NEW.id, 'Admin');
+        id INTO new_group_id;
+    -- Insert into public.groups_users
+    INSERT INTO public.groups_users(groupid, userid, user_role)
+        VALUES (new_group_id, NEW.id, 'Admin');
     RETURN NEW;
 END;
 $$

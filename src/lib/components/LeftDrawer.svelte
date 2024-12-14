@@ -1,9 +1,9 @@
 <script lang="ts">
-  // import { Org } from "./../services/orgService.svelte.ts";
+  // import { Group } from "./../services/groupService.svelte.ts";
   import * as Sidebar from "$lib/components/ui/sidebar/index.js";
   import SearchForm from "$lib/components/search-form.svelte";
   import * as Collapsible from "$lib/components/ui/collapsible/index.js";
-  import OrgSwitcher from "@/components/org-switcher.svelte";
+  import GroupSwitcher from "@/components/group-switcher.svelte";
   import {
     GalleryVerticalEnd,
     Minus,
@@ -30,24 +30,6 @@
     ...restProps
   }: ComponentProps<typeof Sidebar.Root> = $props();
   const data = {
-    teams: [
-      {
-        name: "Acme Inc",
-        logo: GalleryVerticalEnd,
-        plan: "Enterprise",
-      },
-      {
-        name: "Acme Corp.",
-        logo: AudioWaveform,
-        plan: "Startup",
-      },
-      {
-        name: "Evil Corp.",
-        logo: Command,
-        plan: "Free",
-      },
-    ],
-    versions: ["1.0.1", "1.1.0-alpha", "2.0.0-beta1"],
     navMain: [
       {
         title: "Messages",
@@ -70,30 +52,6 @@
           {
             title: "Contacts",
             url: "/contacts",
-          },
-        ],
-      },
-      {
-        title: "Properties",
-        url: "#",
-        icon: Sparkles,
-        isActive: false,
-        items: [
-          {
-            title: "Properties List",
-            url: "/properties",
-          },
-          {
-            title: "Properties Map",
-            url: "/properties/map",
-          },
-          {
-            title: "Map",
-            url: "/map",
-          },
-          {
-            title: "Organizations",
-            url: "/orgs",
           },
         ],
       },
@@ -149,7 +107,7 @@
 <Sidebar.Root class="z-50">
   <Sidebar.Header>
     <div class="pt-[var(--safe-area-inset-top,0px)]">
-      <OrgSwitcher />
+      <GroupSwitcher />
     </div>
   </Sidebar.Header>
   <Sidebar.Content>

@@ -5,7 +5,7 @@ interface Payload {
     id: string | null;
     title: string;
 }
-export const org_upsert = async (
+export const group_upsert = async (
     payload: Payload,
     user: User | null,
 ): Promise<{ data: unknown; error: unknown | null }> => {
@@ -28,14 +28,14 @@ export const org_upsert = async (
             if (userRole !== "Admin") {
                 return {
                     data: null,
-                    error: "User is not an admin of the organization",
+                    error: "User is not an admin of the groupanization",
                 };
             }
         }
 
-        // Insert new orgs_users row
+        // Insert new groups_users row
         const { data: upsertData, error: upsertError } = await supabase
-            .from("orgs")
+            .from("groups")
             .upsert({ id: id || undefined, title })
             .select()
             .single();
@@ -44,23 +44,24 @@ export const org_upsert = async (
             return { data: null, error: upsertError };
         }
         if (!id) {
-            // Insert new orgs_users row
-            const { data: orgUserData, error: orgUserError } = await supabase
-                .from("orgs_users")
-                .insert({
-                    orgid: upsertData.id,
-                    userid: user.id,
-                    user_role: "Admin",
-                })
-                .select()
-                .single();
+            // Insert new groups_users row
+            const { data: groupUserData, error: groupUserError } =
+                await supabase
+                    .from("groups_users")
+                    .insert({
+                        groupid: upsertData.id,
+                        userid: user.id,
+                        user_role: "Admin",
+                    })
+                    .select()
+                    .single();
 
-            if (orgUserError) {
-                return { data: null, error: orgUserError };
+            if (groupUserError) {
+                return { data: null, error: groupUserError };
             }
 
-            // Your org creation logic here
-            return { data: orgUserData, error: null };
+            // Your group creation logic here
+            return { data: groupUserData, error: null };
         } else {
             return { data: upsertData, error: null };
         }

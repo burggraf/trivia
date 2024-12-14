@@ -21,7 +21,7 @@ export const invite_reject = async (
 
         // Check if the invite exists and is for this user
         const { data: inviteData, error: inviteError } = await supabase
-            .from("orgs_invites")
+            .from("groups_invites")
             .select("*")
             .eq("id", id)
             .eq("email", user.email)
@@ -40,7 +40,7 @@ export const invite_reject = async (
 
         // Delete the invitation
         const { data: deleteData, error: deleteError } = await supabase
-            .from("orgs_invites")
+            .from("groups_invites")
             .delete()
             .eq("id", id)
             .select();

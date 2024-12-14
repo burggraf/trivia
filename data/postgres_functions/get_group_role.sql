@@ -1,4 +1,4 @@
-CREATE OR REPLACE FUNCTION get_org_role_for_user(org_id uuid, user_id uuid)
+CREATE OR REPLACE FUNCTION get_group_role(group_id uuid)
     RETURNS text
     AS $$
 DECLARE
@@ -7,10 +7,10 @@ BEGIN
     SELECT
         user_role INTO ROLE
     FROM
-        orgs_users
+        groups_users
     WHERE
-        orgid = org_id
-        AND userid = user_id;
+        groupid = group_id
+        AND userid = auth.uid();
     RETURN ROLE;
 END;
 $$

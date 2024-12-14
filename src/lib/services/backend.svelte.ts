@@ -7,10 +7,10 @@ import { supabase } from "$lib/services/supabase.ts";
 export { supabase }; // Add this line to export the supabase object
 import { locale } from "$lib/i18n/index.ts";
 import type { Database } from "$lib/types/database.types";
-import { getOrgById } from "./orgService.svelte";
+import { getGroupById } from "./groupService.svelte";
 export type Profile = Database["public"]["Tables"]["profiles"]["Insert"];
-//export type Org = Database["public"]["Tables"]["orgs"]["Insert"];
-export interface Org {
+//export type Group = Database["public"]["Tables"]["groups"]["Insert"];
+export interface Group {
   id: string;
   title: string;
   created_at: string;
@@ -20,7 +20,7 @@ export interface Org {
 
 let user = $state<User | null>(null);
 let profile = $state<Profile | null>(null);
-let currentOrg = $state<Org | null>(null);
+let currentGroup = $state<Group | null>(null);
 let isUpdatingUserMetadata = $state(false);
 
 // Add this getter function
@@ -30,8 +30,8 @@ export function getUser() {
 export const getProfile = () => {
   return profile;
 };
-export const getCurrentOrg = () => {
-  return currentOrg;
+export const getCurrentGroup = () => {
+  return currentGroup;
 };
 export const setUser = (newUser: User | null) => {
   user = newUser;
@@ -52,12 +52,12 @@ export function initializeUser() {
           locale.set(userLocale);
           localStorage.setItem("locale", userLocale);
         }
-        // Only update current org if we're not in the middle of updating metadata
+        // Only update current group if we're not in the middle of updating metadata
         if (!isUpdatingUserMetadata) {
-          const newCurrentOrgId = user?.user_metadata?.currentOrgId;
-          if (newCurrentOrgId) {
+          const newCurrentGroupId = user?.user_metadata?.currentGroupId;
+          if (newCurrentGroupId) {
             // Skip metadata update when called from auth state change
-            updateCurrentOrg(newCurrentOrgId, true);
+            updateCurrentGroup(newCurrentGroupId, true);
           }
         }
       },
@@ -68,29 +68,32 @@ export function initializeUser() {
     };
   });
 }
-export async function updateCurrentOrg(orgId: string | null, skipMetadataUpdate: boolean = false): Promise<boolean> {
-  if (!orgId) {
-    currentOrg = null;
+export async function updateCurrentGroup(
+  groupId: string | null,
+  skipMetadataUpdate: boolean = false,
+): Promise<boolean> {
+  if (!groupId) {
+    currentGroup = null;
     return true;
   }
 
   try {
-    const { data, error } = await getOrgById(orgId);
+    const { data, error } = await getGroupById(groupId);
     if (error) {
-      console.error("Error fetching org:", error);
-      currentOrg = null;
+      console.error("Error fetching group:", error);
+      currentGroup = null;
       return false;
     }
 
-    // Update the current org in state
-    currentOrg = data;
+    // Update the current group in state
+    currentGroup = data;
 
-    // Persist the selected org ID in user metadata only if not skipped
+    // Persist the selected group ID in user metadata only if not skipped
     if (user && !isUpdatingUserMetadata && !skipMetadataUpdate) {
       isUpdatingUserMetadata = true;
       try {
         const { error: updateError } = await supabase.auth.updateUser({
-          data: { currentOrgId: orgId },
+          data: { currentGroupId: groupId },
         });
 
         if (updateError) {
@@ -104,7 +107,7 @@ export async function updateCurrentOrg(orgId: string | null, skipMetadataUpdate:
 
     return true;
   } catch (error) {
-    console.error("Error updating current org:", error);
+    console.error("Error updating current group:", error);
     return false;
   }
 }
@@ -319,7 +322,7 @@ export const signOut = async () => {
   if (!error) {
     user = null;
     profile = null;
-    currentOrg = null;
+    currentGroup = null;
   }
 
   return {

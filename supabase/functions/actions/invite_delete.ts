@@ -15,10 +15,10 @@ export const invite_delete = async (
             return { data: null, error: "id not found" };
         }
 
-        // check to make sure the user is the creator of the orgs_invites row
+        // check to make sure the user is the creator of the groups_invites row
         const { data: inviteCreatedByData, error: inviteCreatedByError } =
             await supabase
-                .from("orgs_invites")
+                .from("groups_invites")
                 .select("created_by")
                 .eq("id", id)
                 .single();
@@ -35,9 +35,9 @@ export const invite_delete = async (
                 error: "User is not the creator of this invite",
             };
         }
-        // Insert new orgs_users row
+        // Insert new groups_users row
         const { data: deleteData, error: deleteError } = await supabase
-            .from("orgs_invites")
+            .from("groups_invites")
             .delete()
             .eq("id", id)
             .select();

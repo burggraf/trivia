@@ -1,6 +1,6 @@
-CREATE OR REPLACE FUNCTION public.get_my_orgids()
+CREATE OR REPLACE FUNCTION public.get_my_groupids()
     RETURNS TABLE(
-        orgid uuid)
+        groupid uuid)
     LANGUAGE plpgsql
     STABLE
     SECURITY DEFINER
@@ -10,15 +10,15 @@ CREATE OR REPLACE FUNCTION public.get_my_orgids()
 BEGIN
     RETURN QUERY
     SELECT
-        ou.orgid
+        ou.groupid
     FROM
-        public.orgs_users AS ou
+        public.groups_users AS ou
     WHERE
         ou.userid = auth.uid();
 END;
 $function$;
 
-CREATE OR REPLACE FUNCTION public.get_org_users(org_id uuid)
+CREATE OR REPLACE FUNCTION public.get_group_users(group_id uuid)
     RETURNS TABLE(
         id uuid,
         created_at timestamp with time zone,
@@ -32,17 +32,17 @@ CREATE OR REPLACE FUNCTION public.get_org_users(org_id uuid)
 BEGIN
     RETURN QUERY
     SELECT
-        orgs_users.id,
-        orgs_users.created_at,
-        orgs_users.user_role,
+        groups_users.id,
+        groups_users.created_at,
+        groups_users.user_role,
         auth.users.email,
         auth.users.last_sign_in_at,
         auth.users.raw_user_meta_data
     FROM
-        orgs_users
-        JOIN auth.users ON orgs_users.userid = auth.users.id
+        groups_users
+        JOIN auth.users ON groups_users.userid = auth.users.id
     WHERE
-        orgs_users.orgid = org_id;
+        groups_users.groupid = group_id;
 END;
 $function$;
 
@@ -68,7 +68,7 @@ CREATE OR REPLACE FUNCTION public.reject_invite(invite_id uuid)
     AS $function$
 BEGIN
     -- Delete the invite record
-    DELETE FROM public.orgs_invites
+    DELETE FROM public.groups_invites
     WHERE id = invite_id;
     RETURN TRUE;
 EXCEPTION
@@ -84,7 +84,7 @@ CREATE OR REPLACE FUNCTION public.accept_invite(invite_id uuid)
     SECURITY DEFINER
     AS $function$
 DECLARE
-    v_org_id uuid;
+    v_group_id uuid;
     v_user_id uuid;
     v_email text;
     v_role text;
@@ -92,30 +92,30 @@ BEGIN
     -- Get the current user's ID and email
     v_user_id := auth.uid();
     v_email := auth.email();
-    -- Look up the corresponding orgs_invites record
+    -- Look up the corresponding groups_invites record
     SELECT
-        orgid,
+        groupid,
         email,
-        user_role INTO v_org_id,
+        user_role INTO v_group_id,
         v_email,
         v_role
     FROM
-        public.orgs_invites
+        public.groups_invites
     WHERE
         id = invite_id;
     -- If invite not found, return an error
-    IF v_org_id IS NULL THEN
+    IF v_group_id IS NULL THEN
         RAISE EXCEPTION 'Invite not found';
     END IF;
-    -- Verify that the email address of the current user matches the email field of the given orgs_invites record
+    -- Verify that the email address of the current user matches the email field of the given groups_invites record
     IF v_email != auth.email() THEN
         RAISE EXCEPTION 'Email mismatch';
     END IF;
-    -- Create an entry in the orgs_users table
-    INSERT INTO public.orgs_users(orgid, userid, user_role)
-        VALUES (v_org_id, v_user_id, v_role);
+    -- Create an entry in the groups_users table
+    INSERT INTO public.groups_users(groupid, userid, user_role)
+        VALUES (v_group_id, v_user_id, v_role);
     -- Delete the invite record
-    DELETE FROM public.orgs_invites
+    DELETE FROM public.groups_invites
     WHERE id = invite_id;
     RETURN TRUE;
 EXCEPTION
@@ -125,7 +125,7 @@ END;
 
 $function$;
 
-CREATE OR REPLACE FUNCTION public.get_my_orgs()
+CREATE OR REPLACE FUNCTION public.get_my_groups()
     RETURNS TABLE(
         id uuid,
         title text,
@@ -141,20 +141,20 @@ CREATE OR REPLACE FUNCTION public.get_my_orgs()
 BEGIN
     RETURN QUERY
     SELECT
-        orgs.id,
-        orgs.title,
-        orgs.created_at,
-        orgs.metadata,
-        orgs_users.user_role
+        groups.id,
+        groups.title,
+        groups.created_at,
+        groups.metadata,
+        groups_users.user_role
     FROM
-        orgs
-        JOIN orgs_users ON orgs.id = orgs_users.orgid
+        GROUPS
+        JOIN groups_users ON groups.id = groups_users.groupid
     WHERE
-        orgs_users.userid = auth.uid();
+        groups_users.userid = auth.uid();
 END;
 $function$;
 
-CREATE OR REPLACE FUNCTION public.get_org_role(org_id uuid)
+CREATE OR REPLACE FUNCTION public.get_group_role(group_id uuid)
     RETURNS text
     LANGUAGE plpgsql
     SECURITY DEFINER
@@ -165,15 +165,15 @@ BEGIN
     SELECT
         user_role INTO ROLE
     FROM
-        orgs_users
+        groups_users
     WHERE
-        orgid = org_id
+        groupid = group_id
         AND userid = auth.uid();
     RETURN ROLE;
 END;
 $function$;
 
-CREATE OR REPLACE FUNCTION public.get_org_role_for_user(org_id uuid, user_id uuid)
+CREATE OR REPLACE FUNCTION public.get_group_role_for_user(group_id uuid, user_id uuid)
     RETURNS text
     LANGUAGE plpgsql
     SECURITY DEFINER
@@ -184,17 +184,17 @@ BEGIN
     SELECT
         user_role INTO ROLE
     FROM
-        orgs_users
+        groups_users
     WHERE
-        orgid = org_id
+        groupid = group_id
         AND userid = user_id;
     RETURN ROLE;
 END;
 $function$;
 
-CREATE OR REPLACE FUNCTION public.get_user_orgids(p_userid uuid)
+CREATE OR REPLACE FUNCTION public.get_user_groupids(p_userid uuid)
     RETURNS TABLE(
-        orgid uuid)
+        groupid uuid)
     LANGUAGE plpgsql
     STABLE
     SECURITY DEFINER
@@ -204,9 +204,9 @@ CREATE OR REPLACE FUNCTION public.get_user_orgids(p_userid uuid)
 BEGIN
     RETURN QUERY
     SELECT
-        ou.orgid
+        ou.groupid
     FROM
-        public.orgs_users AS ou
+        public.groups_users AS ou
     WHERE
         ou.userid = p_userid;
 END;
@@ -222,7 +222,7 @@ DECLARE
     first_name text;
     last_name text;
     name_parts text[];
-    new_org_id uuid;
+    new_group_id uuid;
 BEGIN
     full_name := NULLIF(TRIM(COALESCE(NEW.raw_user_meta_data ->> 'full_name', '')), '');
     IF full_name IS NOT NULL THEN
@@ -239,16 +239,16 @@ BEGIN
     -- Insert into public.profiles
     INSERT INTO public.profiles(id, email, firstname, lastname)
         VALUES (NEW.id, NEW.email, first_name, last_name);
-    -- Create the org title
+    -- Create the group title
     full_name := NULLIF(TRIM(CONCAT(first_name, ' ', last_name)), '');
-    -- Insert into public.orgs and get the new org id
-    INSERT INTO public.orgs(id, title)
-        VALUES (NEW.id, CONCAT(COALESCE(full_name, 'New User'), '''s Org'))
+    -- Insert into public.groups and get the new group id
+    INSERT INTO public.groups(id, title)
+        VALUES (NEW.id, CONCAT(COALESCE(full_name, 'New User'), '''s Group'))
     RETURNING
-        id INTO new_org_id;
-    -- Insert into public.orgs_users
-    INSERT INTO public.orgs_users(orgid, userid, user_role)
-        VALUES (new_org_id, NEW.id, 'Admin');
+        id INTO new_group_id;
+    -- Insert into public.groups_users
+    INSERT INTO public.groups_users(groupid, userid, user_role)
+        VALUES (new_group_id, NEW.id, 'Admin');
     RETURN NEW;
 END;
 $function$;

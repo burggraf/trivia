@@ -22,7 +22,7 @@ export const invite_accept = async (
         console.log("invite_accept id", id);
         // Check if the invite exists and get its details
         const { data: inviteData, error: inviteError } = await supabase
-            .from("orgs_invites")
+            .from("groups_invites")
             .select("*")
             .eq("id", id)
             .eq("email", user.email)
@@ -41,51 +41,51 @@ export const invite_accept = async (
             };
         }
 
-        // Start a transaction by creating the orgs_users record
-        const { data: orgUserData, error: orgUserError } = await supabase
-            .from("orgs_users")
+        // Start a transaction by creating the groups_users record
+        const { data: groupUserData, error: groupUserError } = await supabase
+            .from("groups_users")
             .insert({
-                orgid: inviteData.orgid,
+                groupid: inviteData.groupid,
                 userid: user.id,
                 user_role: inviteData.user_role,
             })
             .select()
             .single();
-        console.log("invite_accept orgUserData", orgUserData);
-        console.log("invite_accept orgUserError", orgUserError);
+        console.log("invite_accept groupUserData", groupUserData);
+        console.log("invite_accept groupUserError", groupUserError);
 
-        if (orgUserError) {
-            console.log("invite_accept orgUserError", orgUserError);
-            return { data: null, error: orgUserError.message };
+        if (groupUserError) {
+            console.log("invite_accept groupUserError", groupUserError);
+            return { data: null, error: groupUserError.message };
         }
 
         // If successful, delete the invitation
         const { error: deleteError } = await supabase
-            .from("orgs_invites")
+            .from("groups_invites")
             .delete()
             .eq("id", id);
         console.log("deleteError", deleteError);
         if (deleteError) {
-            // If we can't delete the invite, we should probably clean up the orgs_users record
+            // If we can't delete the invite, we should probably clean up the groups_users record
             // to maintain data consistency
-            console.log("deleteError so deleting orgs_users record");
-            const { error: deleteOrgsUsersError } = await supabase
-                .from("orgs_users")
+            console.log("deleteError so deleting groups_users record");
+            const { error: deleteGroupsUsersError } = await supabase
+                .from("groups_users")
                 .delete()
-                .eq("org_id", inviteData.org_id)
+                .eq("group_id", inviteData.group_id)
                 .eq("user_id", user.id);
             console.log(
-                "deleteOrgsUsersError",
-                deleteOrgsUsersError,
+                "deleteGroupsUsersError",
+                deleteGroupsUsersError,
             );
 
-            return { data: null, error: deleteOrgsUsersError.message };
+            return { data: null, error: deleteGroupsUsersError.message };
         }
         console.log(
-            "invite_accept orgUserData being returned here",
-            orgUserData,
+            "invite_accept groupUserData being returned here",
+            groupUserData,
         );
-        return { data: orgUserData, error: null };
+        return { data: groupUserData, error: null };
     } catch (err) {
         console.log("invite_accept try/catch err", err);
         return { data: null, error: err };
