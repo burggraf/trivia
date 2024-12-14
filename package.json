@@ -1,6 +1,6 @@
 {
 	"name": "trivia",
-	"version": "0.8.7",
+	"version": "0.1.0",
 	"identifier": "com.dmarie.trivia",
 	"description": "Trivia Party",
 	"type": "module",

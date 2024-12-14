@@ -77,6 +77,10 @@
             title: "Privacy Policy",
             url: "/privacy",
           },
+          {
+            title: "Pricing",
+            url: "/pricing",
+          },
         ],
       },
       {
