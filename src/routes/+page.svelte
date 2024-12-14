@@ -8,13 +8,13 @@
   <!-- Hero Section -->
   <main class="flex-1 container mx-auto px-4 py-16">
     <div class="text-center max-w-3xl mx-auto">
-      <h1 class="text-4xl font-bold tracking-tight sm:text-6xl mb-6 flex flex-col items-center gap-4">
-        <img src="/icon.svg" alt="Azabab Logo" class="w-32 h-32" />
-        Azabab
+      <h1
+        class="text-4xl font-bold tracking-tight sm:text-6xl mb-6 flex flex-col items-center gap-4"
+      >
+        <img src="/icon.svg" alt="Trivia Party Logo" class="w-32 h-32" />
+        Trivia Party
       </h1>
-      <p class="text-xl text-muted-foreground mb-16">
-        Property Rental Manager
-      </p>
+      <p class="text-xl text-muted-foreground mb-16">The Ultimate Social Trivia Game</p>
       <div class="flex justify-center gap-4">
         <a href="/dashboard">
           <Button size="lg">Get Started</Button>
@@ -25,43 +25,43 @@
     <!-- Features Grid -->
     <div class="mt-16 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
       <div class="text-center p-6 border rounded-lg shadow-sm">
-        <h2 class="text-xl font-semibold mb-4">For Agents</h2>
+        <h2 class="text-xl font-semibold mb-4">Group Play</h2>
         <ul class="text-muted-foreground text-left space-y-2">
-          <li>• Manage multiple properties</li>
-          <li>• Schedule rentals</li>
-          <li>• Generate rental agreements</li>
-          <li>• Schedule maintenance</li>
-          <li>• Coordinate with all parties</li>
+          <li>• Create private groups</li>
+          <li>• Invite friends to join</li>
+          <li>• Schedule trivia parties</li>
+          <li>• Real-time multiplayer</li>
+          <li>• Track group rankings</li>
         </ul>
       </div>
       <div class="text-center p-6 border rounded-lg shadow-sm">
-        <h2 class="text-xl font-semibold mb-4">For Owners</h2>
+        <h2 class="text-xl font-semibold mb-4">Solo Play</h2>
         <ul class="text-muted-foreground text-left space-y-2">
-          <li>• Monitor property status</li>
-          <li>• Communicate with agents</li>
-          <li>• Access important documents</li>
-          <li>• Track property performance</li>
-          <li>• Review maintenance reports</li>
+          <li>• Practice anytime</li>
+          <li>• Quick 5-minute games</li>
+          <li>• Track personal progress</li>
+          <li>• Earn achievements</li>
+          <li>• Compete on leaderboards</li>
         </ul>
       </div>
       <div class="text-center p-6 border rounded-lg shadow-sm">
-        <h2 class="text-xl font-semibold mb-4">For Renters</h2>
+        <h2 class="text-xl font-semibold mb-4">Questions</h2>
         <ul class="text-muted-foreground text-left space-y-2">
-          <li>• Access rental documents</li>
-          <li>• Contact property agent</li>
-          <li>• Request maintenance</li>
-          <li>• Pay rent and fees</li>
-          <li>• Renew lease online</li>
+          <li>• 60,000+ unique questions</li>
+          <li>• Multiple choice format</li>
+          <li>• Diverse categories</li>
+          <li>• Never repeats</li>
+          <li>• Regular updates</li>
         </ul>
       </div>
       <div class="text-center p-6 border rounded-lg shadow-sm">
-        <h2 class="text-xl font-semibold mb-4">For Providers</h2>
+        <h2 class="text-xl font-semibold mb-4">Stats & Rankings</h2>
         <ul class="text-muted-foreground text-left space-y-2">
-          <li>• Receive service orders</li>
-          <li>• Send invoices</li>
-          <li>• View scheduled calls</li>
-          <li>• Track service history</li>
-          <li>• Communicate with agents</li>
+          <li>• Game history</li>
+          <li>• Tournament tracking</li>
+          <li>• Lifetime statistics</li>
+          <li>• Global rankings</li>
+          <li>• Achievement badges</li>
         </ul>
       </div>
     </div>
@@ -69,11 +69,21 @@
 
   <footer class="border-t mt-8">
     <div class="container mx-auto px-4 py-6">
-      <div class="flex flex-wrap justify-center gap-8 text-sm text-muted-foreground">
-        <a href="/about" class="hover:text-foreground transition-colors">About</a>
-        <a href="/privacy" class="hover:text-foreground transition-colors">Privacy Policy</a>
-        <a href="/terms" class="hover:text-foreground transition-colors">Terms of Service</a>
-        <a href="/pricing" class="hover:text-foreground transition-colors">Pricing</a>
+      <div
+        class="flex flex-wrap justify-center gap-8 text-sm text-muted-foreground"
+      >
+        <a href="/about" class="hover:text-foreground transition-colors"
+          >About</a
+        >
+        <a href="/privacy" class="hover:text-foreground transition-colors"
+          >Privacy Policy</a
+        >
+        <a href="/terms" class="hover:text-foreground transition-colors"
+          >Terms of Service</a
+        >
+        <a href="/pricing" class="hover:text-foreground transition-colors"
+          >Pricing</a
+        >
       </div>
     </div>
   </footer>
