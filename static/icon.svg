@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <!-- Background shape with soft, protective curves -->
+  <rect x="10" y="10" width="180" height="180" rx="30" ry="30" fill="#1E40AF"/>
+  
+  <!-- Shield symbol -->
+  <path d="M100 40 L150 70 L150 130 L100 160 L50 130 L50 70 Z" 
+        fill="#FFFFFF" 
+        opacity="0.9" 
+        stroke="#93C5FD" 
+        stroke-width="4"/>
+  
+  <!-- Larger lock symbol moved to center -->
+  <path d="M85 110 L115 110 L115 100 A15 15 0 0 0 85 100 Z" 
+        fill="#FFFFFF" 
+        stroke="#1E40AF" 
+        stroke-width="3"/>
+</svg>

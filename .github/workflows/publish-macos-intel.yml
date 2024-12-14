@@ -1,0 +1,236 @@
+name: "publish-macos-intel"
+
+on:
+  push:
+    branches:
+      - release
+
+# This workflow will trigger on each push to the `release` branch to create or update a GitHub release, build your app, and upload the artifacts to the release.
+
+jobs:
+  publish-tauri:
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          #- platform: "macos-latest" # for Arm based macs (M1 and above).
+          #  args: "--target aarch64-apple-darwin"
+          - platform: "macos-latest" # for Intel based macs.
+            args: "--target x86_64-apple-darwin"
+          #- platform: "ubuntu-22.04" # for Tauri v1 you could replace this with ubuntu-20.04.
+          #  args: ""
+          #- platform: "windows-latest"
+          #  args: ""
+
+    runs-on: ${{ matrix.platform }}
+    # Add environment variables here
+    env:
+      SUPABASE_URL_ENCRYPTED: ${{ secrets.SUPABASE_URL_ENCRYPTED }}
+      SUPABASE_URL_ENCRYPTION_KEY: ${{ secrets.SUPABASE_URL_ENCRYPTION_KEY }}
+      SUPABASE_ANON_KEY_ENCRYPTED: ${{ secrets.SUPABASE_ANON_KEY_ENCRYPTED }}
+      SUPABASE_ANON_KEY_ENCRYPTION_KEY: ${{ secrets.SUPABASE_ANON_KEY_ENCRYPTION_KEY }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+
+      - name: install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          # Those targets are only used on macos runners so it's in an `if` to slightly speed up windows and linux builds.
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - name: install dependencies (ubuntu only)
+        if: matrix.platform == 'ubuntu-22.04' # This must match the platform value defined above.
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.0-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+        # webkitgtk 4.0 is for Tauri v1 - webkitgtk 4.1 is for Tauri v2.
+        # You can remove the one that doesn't apply to your app to speed up the workflow a bit.
+
+      - name: Set environment variables
+        run: |
+          echo "package.json contents:"
+          cat package.json
+          echo "**************"
+          echo "setting env variables"
+          echo "VERSION=$(node -p "require('./package.json').version")" >> $GITHUB_ENV
+          echo "NAME=$(node -p "require('./package.json').name")" >> $GITHUB_ENV
+          echo "IDENTIFIER=$(node -p "require('./package.json').identifier")" >> $GITHUB_ENV    
+          echo "DESCRIPTION=$(node -p "require('./package.json').description")" >> $GITHUB_ENV
+          export VERSION=$(node -p "require('./package.json').version")
+          export NAME=$(node -p "require('./package.json').name")
+          export IDENTIFIER=$(node -p "require('./package.json').identifier")
+          export DESCRIPTION=$(node -p "require('./package.json').description")
+          echo "Shell VERSION: $VERSION"
+          echo "Shell NAME: $NAME"
+          echo "Shell IDENTIFIER: $IDENTIFIER"
+          echo "Shell DESCRIPTION: $DESCRIPTION"
+      - name: Check environment variables
+        run: |
+          echo "ENV VERSION: ${{ env.VERSION }}"
+          echo "ENV NAME: ${{ env.NAME }}"
+          echo "ENV IDENTIFIER: ${{ env.IDENTIFIER }}"
+          echo "Computed VERSION: $(node -p "require('./package.json').version")"
+          echo "Computed NAME: $(node -p "require('./package.json').name")"
+
+      - name: Create and initialize Tauri project
+        run: |
+          npm install
+          npm run build
+
+          # Create src-tauri directory and subdirectories
+          mkdir -p src-tauri/icons
+          mkdir -p src-tauri/src
+
+          # Initialize a new Rust project
+          cd src-tauri
+          cargo init --name ${{ env.NAME }}
+          cd ..
+
+          # Copy icons
+          cp static/favicon.png src-tauri/icons/32x32.png
+          cp static/favicon.png src-tauri/icons/128x128.png
+          cp static/favicon.png src-tauri/icons/128x128@2x.png
+          cp static/favicon.png src-tauri/icons/icon.icns
+          cp static/favicon.png src-tauri/icons/icon.ico
+
+          # Create Cargo.toml
+          cat > src-tauri/Cargo.toml << EOF
+          [package]
+          name = "${{ env.NAME }}"
+          version = "${{ env.VERSION }}"
+          description = "${{ env.DESCRIPTION }}"
+          authors = ["you"]
+          license = ""
+          repository = ""
+          edition = "2021"
+          rust-version = "1.70"
+
+          [build-dependencies]
+          tauri-build = { version = "1.5.0", features = [] }
+
+          [dependencies]
+          serde_json = "1.0"
+          serde = { version = "1.0", features = ["derive"] }
+          tauri = { version = "1.5.2", features = ["shell-open"] }
+
+          [features]
+          custom-protocol = [ "tauri/custom-protocol" ]
+          default = [ "custom-protocol" ]
+          EOF
+
+          # Create build.rs
+          cat > src-tauri/build.rs << EOF
+          fn main() {
+            tauri_build::build()
+          }
+          EOF
+
+          # Create main.rs
+          cat > src-tauri/src/main.rs << EOF
+          #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+
+          fn main() {
+              tauri::Builder::default()
+                  .run(tauri::generate_context!())
+                  .expect("error while running tauri application");
+          }
+          EOF
+
+          # Create tauri.conf.json with both Linux and macOS targets
+          cat > src-tauri/tauri.conf.json << EOF
+          {
+            "build": {
+              "beforeDevCommand": "",
+              "beforeBuildCommand": "",
+              "devPath": "$(pwd)/build",
+              "distDir": "$(pwd)/build"
+            },
+            "package": {
+              "productName": "${{ env.NAME }}_macos",
+              "version": "${{ env.VERSION }}"
+            },
+            "tauri": {
+              "bundle": {
+                "active": true,
+                "category": "DeveloperTool",
+                "copyright": "",
+                "identifier": "${{ env.IDENTIFIER }}",
+                "icon": [
+                  "icons/32x32.png",
+                  "icons/128x128.png",
+                  "icons/128x128@2x.png",
+                  "icons/icon.icns",
+                  "icons/icon.ico"
+                ],
+                "resources": [],
+                "shortDescription": "",
+                "targets": [
+                  "dmg",
+                  "app",
+                  "deb",
+                  "appimage",
+                  "rpm"
+                ],
+                "deb": {
+                  "depends": []
+                },
+                "rpm": {
+                  "depends": []
+                },
+                "macOS": {
+                  "frameworks": [],
+                  "minimumSystemVersion": "",
+                  "exceptionDomain": "",
+                  "signingIdentity": null,
+                  "entitlements": null
+                },
+                "windows": {
+                  "certificateThumbprint": null,
+                  "digestAlgorithm": "sha256",
+                  "timestampUrl": ""
+                }
+              },
+              "security": {
+                "csp": null
+              },
+              "windows": [
+                {
+                  "fullscreen": false,
+                  "height": 600,
+                  "resizable": true,
+                  "title": "${{ env.NAME }}",
+                  "width": 800
+                }
+              ]
+            }
+          }
+          EOF
+
+          # Verify the directory structure
+          echo "Tauri directory contents:"
+          ls -la src-tauri/
+          echo "Cargo.toml contents:"
+          cat src-tauri/Cargo.toml
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: app-v__VERSION__
+          releaseName: "App v__VERSION__"
+          releaseBody: "See the assets to download this version and install."
+          releaseDraft: true
+          prerelease: false
+          args: ${{ matrix.args }}
+          distPath: ./build
+          bundleIdentifier: ${{ env.IDENTIFIER }}
+          appName: ${{ env.NAME }}
+          appVersion: ${{ env.VERSION }}

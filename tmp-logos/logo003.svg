@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="512" height="512" viewBox="0 0 512 512" version="1.1" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+        <linearGradient id="circleGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:#3B82F6"/>
+            <stop offset="100%" style="stop-color:#2563EB"/>
+        </linearGradient>
+    </defs>
+    
+    <!-- Main container -->
+    <g>
+        <!-- Background -->
+        <rect x="56" y="56" width="400" height="400" rx="80" fill="url(#circleGradient)"/>
+        
+        <!-- Three circles -->
+        <g fill="none" stroke="white" stroke-width="40">
+            <!-- Top circle -->
+            <circle cx="256" cy="176" r="80"/>
+            <!-- Bottom left circle -->
+            <circle cx="176" cy="336" r="80"/>
+            <!-- Bottom right circle -->
+            <circle cx="336" cy="336" r="80"/>
+        </g>
+        
+        <!-- Center dot -->
+        <circle cx="256" cy="256" r="20" fill="white"/>
+    </g>
+</svg>

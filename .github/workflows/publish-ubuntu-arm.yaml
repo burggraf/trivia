@@ -1,0 +1,290 @@
+name: "publish-ubuntu-arm"
+
+on:
+  push:
+    branches:
+      - release
+
+# This workflow will trigger on each push to the `release` branch to create or update a GitHub release, build your app, and upload the artifacts to the release.
+
+jobs:
+  publish-tauri:
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: "ubuntu-22.04"
+            args: "--target aarch64-unknown-linux-gnu"
+          #- platform: "macos-latest" # for Arm based macs (M1 and above).
+          #  args: "--target aarch64-apple-darwin"
+          #- platform: "macos-latest" # for Intel based macs.
+          #  args: "--target x86_64-apple-darwin"
+          #- platform: "windows-latest"
+          #  args: ""
+
+    runs-on: ${{ matrix.platform }}
+    # Add environment variables here
+    env:
+      SUPABASE_URL_ENCRYPTED: ${{ secrets.SUPABASE_URL_ENCRYPTED }}
+      SUPABASE_URL_ENCRYPTION_KEY: ${{ secrets.SUPABASE_URL_ENCRYPTION_KEY }}
+      SUPABASE_ANON_KEY_ENCRYPTED: ${{ secrets.SUPABASE_ANON_KEY_ENCRYPTED }}
+      SUPABASE_ANON_KEY_ENCRYPTION_KEY: ${{ secrets.SUPABASE_ANON_KEY_ENCRYPTION_KEY }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+
+      - name: install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-unknown-linux-gnu
+
+      - name: Install cross-compilation dependencies
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          # Add ARM64 architecture
+          sudo dpkg --add-architecture arm64
+
+          # Update sources list - separate AMD64 and ARM64 repositories
+          sudo tee /etc/apt/sources.list << EOF
+          # AMD64 repositories
+          deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ jammy main restricted
+          deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ jammy-updates main restricted
+
+          # ARM64 repositories
+          deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ jammy main restricted
+          deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ jammy-updates main restricted
+          EOF
+
+          sudo apt-get update
+
+          # Install only the minimum required packages
+          sudo apt-get install -y --no-install-recommends \
+            crossbuild-essential-arm64 \
+            gcc-aarch64-linux-gnu \
+            g++-aarch64-linux-gnu \
+            pkg-config \
+            libgtk-3-dev:arm64 \
+            libwebkit2gtk-4.0-dev:arm64 \
+            libappindicator3-dev:arm64 \
+            librsvg2-dev:arm64 \
+            patchelf
+
+      - name: Set up cross-compilation environment
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          # Create pkg-config wrapper
+          sudo tee /usr/local/bin/aarch64-linux-gnu-pkg-config << 'EOF' > /dev/null
+          #!/bin/sh
+          export PKG_CONFIG_PATH=/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig
+          export PKG_CONFIG_LIBDIR=/usr/lib/aarch64-linux-gnu/pkgconfig
+          export PKG_CONFIG_SYSROOT_DIR=/
+          export PKG_CONFIG_ALLOW_SYSTEM_CFLAGS=1
+          export PKG_CONFIG_ALLOW_SYSTEM_LIBS=1
+
+          # Debug
+          echo "Searching for: $@"
+          echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH"
+          ls -la /usr/lib/aarch64-linux-gnu/pkgconfig/gdk*.pc
+
+          exec pkg-config "$@"
+          EOF
+          sudo chmod +x /usr/local/bin/aarch64-linux-gnu-pkg-config
+
+          # Set environment variables
+          echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
+          echo "CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
+          echo "CXX_aarch64_unknown_linux_gnu=aarch64-linux-gnu-g++" >> $GITHUB_ENV
+          echo "PKG_CONFIG_PATH=/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig" >> $GITHUB_ENV
+          echo "PKG_CONFIG_ALLOW_CROSS=1" >> $GITHUB_ENV
+          echo "PKG_CONFIG=/usr/local/bin/aarch64-linux-gnu-pkg-config" >> $GITHUB_ENV
+
+          # Debug: Test pkg-config
+          echo "Testing pkg-config for gdk-3.0:"
+          /usr/local/bin/aarch64-linux-gnu-pkg-config --list-all | grep -i gdk
+
+      - name: Set environment variables
+        run: |
+          echo "package.json contents:"
+          cat package.json
+          echo "**************"
+          echo "setting env variables"
+          echo "VERSION=$(node -p "require('./package.json').version")" >> $GITHUB_ENV
+          echo "NAME=$(node -p "require('./package.json').name")" >> $GITHUB_ENV
+          echo "IDENTIFIER=$(node -p "require('./package.json').identifier")" >> $GITHUB_ENV    
+          echo "DESCRIPTION=$(node -p "require('./package.json').description")" >> $GITHUB_ENV
+          export VERSION=$(node -p "require('./package.json').version")
+          export NAME=$(node -p "require('./package.json').name")
+          export IDENTIFIER=$(node -p "require('./package.json').identifier")
+          export DESCRIPTION=$(node -p "require('./package.json').description")
+          echo "Shell VERSION: $VERSION"
+          echo "Shell NAME: $NAME"
+          echo "Shell IDENTIFIER: $IDENTIFIER"
+          echo "Shell DESCRIPTION: $DESCRIPTION"
+      - name: Check environment variables
+        run: |
+          echo "ENV VERSION: ${{ env.VERSION }}"
+          echo "ENV NAME: ${{ env.NAME }}"
+          echo "ENV IDENTIFIER: ${{ env.IDENTIFIER }}"
+          echo "Computed VERSION: $(node -p "require('./package.json').version")"
+          echo "Computed NAME: $(node -p "require('./package.json').name")"
+
+      - name: Create and initialize Tauri project
+        run: |
+          # Clean install to avoid optional dependency issues
+          rm -rf node_modules package-lock.json
+          npm install @rollup/rollup-linux-arm64-gnu
+          npm install
+          npm run build
+
+          # Create src-tauri directory and subdirectories
+          mkdir -p src-tauri/icons
+          mkdir -p src-tauri/src
+
+          # Initialize a new Rust project
+          cd src-tauri
+          cargo init --name ${{ env.NAME }}
+          cd ..
+
+          # Copy icons
+          cp static/favicon.png src-tauri/icons/32x32.png
+          cp static/favicon.png src-tauri/icons/128x128.png
+          cp static/favicon.png src-tauri/icons/128x128@2x.png
+          cp static/favicon.png src-tauri/icons/icon.icns
+          cp static/favicon.png src-tauri/icons/icon.ico
+
+          # Create Cargo.toml
+          cat > src-tauri/Cargo.toml << EOF
+          [package]
+          name = "${{ env.NAME }}"
+          version = "${{ env.VERSION }}"
+          description = "${{ env.DESCRIPTION }}"
+          authors = ["you"]
+          license = ""
+          repository = ""
+          edition = "2021"
+          rust-version = "1.70"
+
+          [build-dependencies]
+          tauri-build = { version = "1.5.0", features = [] }
+
+          [dependencies]
+          serde_json = "1.0"
+          serde = { version = "1.0", features = ["derive"] }
+          tauri = { version = "1.5.2", features = ["shell-open"] }
+
+          [features]
+          custom-protocol = [ "tauri/custom-protocol" ]
+          default = [ "custom-protocol" ]
+          EOF
+
+          # Create build.rs
+          cat > src-tauri/build.rs << EOF
+          fn main() {
+            tauri_build::build()
+          }
+          EOF
+
+          # Create main.rs
+          cat > src-tauri/src/main.rs << EOF
+          #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+
+          fn main() {
+              tauri::Builder::default()
+                  .run(tauri::generate_context!())
+                  .expect("error while running tauri application");
+          }
+          EOF
+
+      - name: Configure ARM64 build
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          # Create or update tauri.conf.json
+          cat > src-tauri/tauri.conf.json << EOF
+          {
+            "build": {
+              "beforeDevCommand": "",
+              "beforeBuildCommand": "",
+              "devPath": "../build",
+              "distDir": "../build"
+            },
+            "package": {
+              "productName": "${{ env.NAME }}_linux",
+              "version": "${{ env.VERSION }}"
+            },
+            "tauri": {
+              "bundle": {
+                "active": true,
+                "category": "DeveloperTool",
+                "copyright": "",
+                "deb": {
+                  "depends": []
+                },
+                "externalBin": [],
+                "icon": [
+                  "icons/32x32.png",
+                  "icons/128x128.png",
+                  "icons/128x128@2x.png",
+                  "icons/icon.icns",
+                  "icons/icon.ico"
+                ],
+                "identifier": "${{ env.IDENTIFIER }}",
+                "longDescription": "",
+                "macOS": {
+                  "entitlements": null,
+                  "exceptionDomain": "",
+                  "frameworks": [],
+                  "providerShortName": null,
+                  "signingIdentity": null
+                },
+                "resources": [],
+                "shortDescription": "",
+                "targets": ["deb"],
+                "windows": {
+                  "certificateThumbprint": null,
+                  "digestAlgorithm": "sha256",
+                  "timestampUrl": ""
+                }
+              },
+              "security": {
+                "csp": null
+              },
+              "updater": {
+                "active": false
+              },
+              "windows": [
+                {
+                  "fullscreen": false,
+                  "height": 600,
+                  "resizable": true,
+                  "title": "Svelte 5 Template",
+                  "width": 800
+                }
+              ]
+            }
+          }
+          EOF
+
+      - name: Build Tauri app
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: app-v__VERSION__
+          releaseName: "App v__VERSION__"
+          releaseBody: "See the assets to download this version and install."
+          releaseDraft: true
+          prerelease: false
+          # args: ${{ matrix.args }} -- --release --features optimize
+          # args: "--target aarch64-unknown-linux-gnu"
+          args: ${{ matrix.args }}
+          distPath: ./build
+          bundleIdentifier: ${{ env.IDENTIFIER }}
+          appName: ${{ env.NAME }}
+          appVersion: ${{ env.VERSION }}

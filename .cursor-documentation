@@ -1,0 +1,36 @@
+{
+    "personalDocs": [
+        {
+            "name": "supabase-js auth",
+            "url": "https://supabase.com/docs/guides/auth"
+        },
+        {
+            "name": "supabase-js database",
+            "url": "https://supabase.com/docs/guides/database"
+        },
+        {
+            "name": "Tailwind",
+            "url": "https://tailwindcss.com/docs/installation"
+        },
+        {
+            "name": "Svelte 5 Docs",
+            "url": "https://svelte.dev/docs/svelte/overview"
+        },
+        {
+            "name": "SvelteKit Docs",
+            "url": "https://svelte.dev/docs/kit/introduction"
+        },
+        {
+            "name": "SvelteKit Static Adapter",
+            "url": "https://svelte.dev/docs/kit/adapter-static"
+        },
+        {
+            "name": "Svelte 5 Migration Guide",
+            "url": "https://svelte.dev/docs/svelte/v5-migration-guide"
+        },
+        {
+            "name": "Shadcn-svelte docs",
+            "url": "https://next.shadcn-svelte.com/docs"
+        }
+    ]
+}
