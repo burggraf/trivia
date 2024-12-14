@@ -26,7 +26,7 @@ CREATE OR REPLACE FUNCTION "public"."accept_invite"("invite_id" "uuid") RETURNS 
     LANGUAGE "plpgsql" SECURITY DEFINER
     AS $$
 DECLARE
-    v_org_id uuid;
+    v_group_id uuid;
     v_user_id uuid;
     v_email text;
     v_role text;
@@ -34,30 +34,30 @@ BEGIN
     -- Get the current user's ID and email
     v_user_id := auth.uid();
     v_email := auth.email();
-    -- Look up the corresponding orgs_invites record
+    -- Look up the corresponding groups_invites record
     SELECT
-        orgid,
+        groupid,
         email,
-        user_role INTO v_org_id,
+        user_role INTO v_group_id,
         v_email,
         v_role
     FROM
-        public.orgs_invites
+        public.groups_invites
     WHERE
         id = invite_id;
     -- If invite not found, return an error
-    IF v_org_id IS NULL THEN
+    IF v_group_id IS NULL THEN
         RAISE EXCEPTION 'Invite not found';
     END IF;
-    -- Verify that the email address of the current user matches the email field of the given orgs_invites record
+    -- Verify that the email address of the current user matches the email field of the given groups_invites record
     IF v_email != auth.email() THEN
         RAISE EXCEPTION 'Email mismatch';
     END IF;
-    -- Create an entry in the orgs_users table
-    INSERT INTO public.orgs_users(orgid, userid, user_role)
-        VALUES (v_org_id, v_user_id, v_role);
+    -- Create an entry in the groups_users table
+    INSERT INTO public.groups_users(groupid, userid, user_role)
+        VALUES (v_group_id, v_user_id, v_role);
     -- Delete the invite record
-    DELETE FROM public.orgs_invites
+    DELETE FROM public.groups_invites
     WHERE id = invite_id;
     RETURN TRUE;
 EXCEPTION
@@ -71,72 +71,64 @@ $$;
 ALTER FUNCTION "public"."accept_invite"("invite_id" "uuid") OWNER TO "postgres";
 
 
-COMMENT ON FUNCTION "public"."accept_invite"("invite_id" "uuid") IS 'Accpets an org invite, creating a user entry in the orgs_users table and deleting the orgs_invite record. This function should only be accessible to highly privileged roles.';
+COMMENT ON FUNCTION "public"."accept_invite"("invite_id" "uuid") IS 'Accpets an group invite, creating a user entry in the groups_users table and deleting the groups_invite record. This function should only be accessible to highly privileged roles.';
 
 
 
-CREATE OR REPLACE FUNCTION "public"."get_my_orgids"() RETURNS TABLE("orgid" "uuid")
-    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
-    SET "search_path" TO 'public', 'pg_temp'
-    AS $$
-BEGIN
-  RETURN QUERY
-  SELECT
-    ou.orgid
-  FROM
-    public.orgs_users AS ou
-  WHERE
-    ou.userid = auth.uid();
-END;
-$$;
-
-
-ALTER FUNCTION "public"."get_my_orgids"() OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."get_my_orgs"() RETURNS TABLE("id" "uuid", "title" "text", "created_at" timestamp with time zone, "metadata" "jsonb", "user_role" "text")
-    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
-    SET "search_path" TO 'public', 'pg_temp'
-    AS $$
-BEGIN
-  RETURN QUERY
-  SELECT
-    orgs.id,
-    orgs.title,
-    orgs.created_at,
-    orgs.metadata,
-    orgs_users.user_role
-  FROM
-    orgs
-    JOIN orgs_users ON orgs.id = orgs_users.orgid
-  WHERE
-    orgs_users.userid = auth.uid();
-END;
-$$;
-
-
-ALTER FUNCTION "public"."get_my_orgs"() OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."get_org_role"("org_id" "uuid") RETURNS "text"
-    LANGUAGE "plpgsql" SECURITY DEFINER
+CREATE OR REPLACE FUNCTION "public"."find_and_insert_similar_questions"("offset_val" integer) RETURNS "json"
+    LANGUAGE "plpgsql"
     AS $$
 DECLARE
-    role TEXT;
+  inserted_count INTEGER;
+  queried_count INTEGER;
+  total_question_count INTEGER;
 BEGIN
-    SELECT user_role INTO role
-    FROM orgs_users
-    WHERE orgid = org_id AND userid = auth.uid();
+    -- Determine total records for loop exit condition
+    SELECT count(*) into total_question_count FROM questions;
+    
+  WITH given_question AS (
+    SELECT id, question, embedding, a
+    FROM questions
+    WHERE id in (select id from questions order by id offset offset_val limit 100)
+  ),
+    similar_pairs AS (
+        SELECT 
+            gq.id as id1, 
+            q.id as id2, 
+            1 - (gq.embedding <=> q.embedding) AS similarity
+        FROM given_question gq
+        CROSS JOIN LATERAL (
+            SELECT id, question, embedding, a
+            FROM questions
+            WHERE id != gq.id
+            ORDER BY gq.embedding <-> embedding
+            LIMIT 100  -- Adjust this value based on how many potential matches you want to check
+        ) q
+        WHERE 1 - (gq.embedding <=> q.embedding) > 0.98
+    )
+  
+    INSERT INTO similar_questions (id1, id2, similarity)
+    SELECT id1, id2, similarity
+    FROM similar_pairs;
 
-    RETURN role;
+    GET DIAGNOSTICS inserted_count = ROW_COUNT;
+    SELECT COUNT(*) INTO queried_count FROM questions WHERE id IN (SELECT id FROM questions ORDER BY id OFFSET offset_val LIMIT 100);
+
+
+  RETURN json_build_object(
+    'inserted_count', inserted_count,
+    'queried_count', queried_count,
+    'total_count', total_question_count
+  );
+
 END;
 $$;
 
 
-ALTER FUNCTION "public"."get_org_role"("org_id" "uuid") OWNER TO "postgres";
+ALTER FUNCTION "public"."find_and_insert_similar_questions"("offset_val" integer) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."get_org_role_for_user"("org_id" "uuid", "user_id" "uuid") RETURNS "text"
+CREATE OR REPLACE FUNCTION "public"."get_group_role"("group_id" "uuid") RETURNS "text"
     LANGUAGE "plpgsql" SECURITY DEFINER
     AS $$
 DECLARE
@@ -145,63 +137,127 @@ BEGIN
     SELECT
         user_role INTO ROLE
     FROM
-        orgs_users
+        groups_users
     WHERE
-        orgid = org_id
+        groupid = group_id
+        AND userid = auth.uid();
+    RETURN ROLE;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."get_group_role"("group_id" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."get_group_role_for_user"("group_id" "uuid", "user_id" "uuid") RETURNS "text"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+DECLARE
+    ROLE TEXT;
+BEGIN
+    SELECT
+        user_role INTO ROLE
+    FROM
+        groups_users
+    WHERE
+        groupid = group_id
         AND userid = user_id;
     RETURN ROLE;
 END;
 $$;
 
 
-ALTER FUNCTION "public"."get_org_role_for_user"("org_id" "uuid", "user_id" "uuid") OWNER TO "postgres";
+ALTER FUNCTION "public"."get_group_role_for_user"("group_id" "uuid", "user_id" "uuid") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."get_org_users"("org_id" "uuid") RETURNS TABLE("id" "uuid", "created_at" timestamp with time zone, "user_role" "text", "email" character varying, "last_sign_in_at" timestamp with time zone, "raw_user_meta_data" "jsonb")
+CREATE OR REPLACE FUNCTION "public"."get_group_users"("group_id" "uuid") RETURNS TABLE("id" "uuid", "created_at" timestamp with time zone, "user_role" "text", "email" character varying, "last_sign_in_at" timestamp with time zone, "raw_user_meta_data" "jsonb")
     LANGUAGE "plpgsql" SECURITY DEFINER
     AS $$
 BEGIN
     RETURN QUERY
     SELECT
-        orgs_users.id,
-        orgs_users.created_at,
-        orgs_users.user_role,
+        groups_users.id,
+        groups_users.created_at,
+        groups_users.user_role,
         auth.users.email,
         auth.users.last_sign_in_at,
         auth.users.raw_user_meta_data
     FROM
-        orgs_users
-        JOIN auth.users ON orgs_users.userid = auth.users.id
+        groups_users
+        JOIN auth.users ON groups_users.userid = auth.users.id
     WHERE
-        orgs_users.orgid = org_id;
+        groups_users.groupid = group_id;
 END;
 $$;
 
 
-ALTER FUNCTION "public"."get_org_users"("org_id" "uuid") OWNER TO "postgres";
+ALTER FUNCTION "public"."get_group_users"("group_id" "uuid") OWNER TO "postgres";
 
 
-COMMENT ON FUNCTION "public"."get_org_users"("org_id" "uuid") IS 'Gets a list of all users in an organization. This function should only be accessible to highly privileged roles.';
+COMMENT ON FUNCTION "public"."get_group_users"("group_id" "uuid") IS 'Gets a list of all users in an groupanization. This function should only be accessible to highly privileged roles.';
 
 
 
-CREATE OR REPLACE FUNCTION "public"."get_user_orgids"("p_userid" "uuid") RETURNS TABLE("orgid" "uuid")
+CREATE OR REPLACE FUNCTION "public"."get_my_groupids"() RETURNS TABLE("groupid" "uuid")
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public', 'pg_temp'
     AS $$
 BEGIN
-  RETURN QUERY
-  SELECT
-    ou.orgid
-  FROM
-    public.orgs_users AS ou
-  WHERE
-    ou.userid = p_userid;
+    RETURN QUERY
+    SELECT
+        ou.groupid
+    FROM
+        public.groups_users AS ou
+    WHERE
+        ou.userid = auth.uid();
 END;
 $$;
 
 
-ALTER FUNCTION "public"."get_user_orgids"("p_userid" "uuid") OWNER TO "postgres";
+ALTER FUNCTION "public"."get_my_groupids"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."get_my_groups"() RETURNS TABLE("id" "uuid", "title" "text", "created_at" timestamp with time zone, "metadata" "jsonb", "user_role" "text")
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
+    AS $$
+BEGIN
+    RETURN QUERY
+    SELECT
+        groups.id,
+        groups.title,
+        groups.created_at,
+        groups.metadata,
+        groups_users.user_role
+    FROM
+        GROUPS
+        JOIN groups_users ON groups.id = groups_users.groupid
+    WHERE
+        groups_users.userid = auth.uid();
+END;
+$$;
+
+
+ALTER FUNCTION "public"."get_my_groups"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."get_user_groupids"("p_userid" "uuid") RETURNS TABLE("groupid" "uuid")
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
+    AS $$
+BEGIN
+    RETURN QUERY
+    SELECT
+        ou.groupid
+    FROM
+        public.groups_users AS ou
+    WHERE
+        ou.userid = p_userid;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."get_user_groupids"("p_userid" "uuid") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."handle_new_user"() RETURNS "trigger"
@@ -212,7 +268,7 @@ DECLARE
     first_name text;
     last_name text;
     name_parts text[];
-    new_org_id uuid;
+    new_group_id uuid;
 BEGIN
     full_name := NULLIF(TRIM(COALESCE(NEW.raw_user_meta_data ->> 'full_name', '')), '');
     IF full_name IS NOT NULL THEN
@@ -229,16 +285,16 @@ BEGIN
     -- Insert into public.profiles
     INSERT INTO public.profiles(id, email, firstname, lastname)
         VALUES (NEW.id, NEW.email, first_name, last_name);
-    -- Create the org title
+    -- Create the group title
     full_name := NULLIF(TRIM(CONCAT(first_name, ' ', last_name)), '');
-    -- Insert into public.orgs and get the new org id
-    INSERT INTO public.orgs(id, title)
-        VALUES (NEW.id, CONCAT(COALESCE(full_name, 'New User'), '''s Org'))
+    -- Insert into public.groups and get the new group id
+    INSERT INTO public.groups(id, title)
+        VALUES (NEW.id, CONCAT(COALESCE(full_name, 'New User'), '''s Group'))
     RETURNING
-        id INTO new_org_id;
-    -- Insert into public.orgs_users
-    INSERT INTO public.orgs_users(orgid, userid, user_role)
-        VALUES (new_org_id, NEW.id, 'Admin');
+        id INTO new_group_id;
+    -- Insert into public.groups_users
+    INSERT INTO public.groups_users(groupid, userid, user_role)
+        VALUES (new_group_id, NEW.id, 'Admin');
     RETURN NEW;
 END;
 $$;
@@ -251,11 +307,13 @@ CREATE OR REPLACE FUNCTION "public"."is_backup_running"() RETURNS boolean
     LANGUAGE "plpgsql"
     AS $$
 BEGIN
-  RETURN EXISTS (
-    SELECT 1 
-    FROM pg_ls_dir('.')
-    WHERE pg_ls_dir = 'backup_label'
-  );
+    RETURN EXISTS(
+        SELECT
+            1
+        FROM
+            pg_ls_dir('.')
+        WHERE
+            pg_ls_dir = 'backup_label');
 END;
 $$;
 
@@ -268,7 +326,7 @@ CREATE OR REPLACE FUNCTION "public"."reject_invite"("invite_id" "uuid") RETURNS 
     AS $$
 BEGIN
     -- Delete the invite record
-    DELETE FROM public.orgs_invites
+    DELETE FROM public.groups_invites
     WHERE id = invite_id;
     RETURN TRUE;
 EXCEPTION
@@ -282,12 +340,33 @@ $$;
 ALTER FUNCTION "public"."reject_invite"("invite_id" "uuid") OWNER TO "postgres";
 
 
-COMMENT ON FUNCTION "public"."reject_invite"("invite_id" "uuid") IS 'Deletes an org invite. This function should only be accessible to highly privileged roles.';
+COMMENT ON FUNCTION "public"."reject_invite"("invite_id" "uuid") IS 'Deletes an group invite. This function should only be accessible to highly privileged roles.';
 
 
 SET default_tablespace = '';
 
 SET default_table_access_method = "heap";
+
+
+CREATE TABLE IF NOT EXISTS "public"."categories" (
+    "id" bigint NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "title" "text" NOT NULL
+);
+
+
+ALTER TABLE "public"."categories" OWNER TO "postgres";
+
+
+ALTER TABLE "public"."categories" ALTER COLUMN "id" ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME "public"."categories_id_seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
 
 
 CREATE TABLE IF NOT EXISTS "public"."contacts" (
@@ -299,7 +378,7 @@ CREATE TABLE IF NOT EXISTS "public"."contacts" (
     "phone" "text",
     "contact_type" "text",
     "notes" "text",
-    "orgid" "uuid" NOT NULL,
+    "groupid" "uuid" NOT NULL,
     "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "userid" "uuid",
     "address" "text",
@@ -316,6 +395,77 @@ ALTER TABLE "public"."contacts" OWNER TO "postgres";
 
 
 COMMENT ON TABLE "public"."contacts" IS 'List of Contacts (people)';
+
+
+
+CREATE TABLE IF NOT EXISTS "public"."duplicates" (
+    "category" "text",
+    "subcategory" "text",
+    "difficulty" "text",
+    "question" "text",
+    "a" "text",
+    "b" "text",
+    "c" "text",
+    "d" "text",
+    "id" "uuid",
+    "created_at" timestamp with time zone,
+    "updated_at" timestamp with time zone,
+    "embedding" "extensions"."vector"(384),
+    "metadata" "jsonb",
+    "duplicate_id" "uuid"
+);
+
+
+ALTER TABLE "public"."duplicates" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."groups" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "title" "text" NOT NULL,
+    "metadata" "jsonb"
+);
+
+
+ALTER TABLE "public"."groups" OWNER TO "postgres";
+
+
+COMMENT ON TABLE "public"."groups" IS 'Groupanizations';
+
+
+
+CREATE TABLE IF NOT EXISTS "public"."groups_invites" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "groupid" "uuid" NOT NULL,
+    "created_by" "uuid" NOT NULL,
+    "email" "text" NOT NULL,
+    "user_role" "text" NOT NULL,
+    "expires_at" timestamp with time zone DEFAULT ("now"() + '7 days'::interval) NOT NULL,
+    "metadata" "jsonb"
+);
+
+
+ALTER TABLE "public"."groups_invites" OWNER TO "postgres";
+
+
+COMMENT ON TABLE "public"."groups_invites" IS 'pending invitations to join an group';
+
+
+
+CREATE TABLE IF NOT EXISTS "public"."groups_users" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "groupid" "uuid" NOT NULL,
+    "userid" "uuid" NOT NULL,
+    "user_role" "text" NOT NULL
+);
+
+
+ALTER TABLE "public"."groups_users" OWNER TO "postgres";
+
+
+COMMENT ON TABLE "public"."groups_users" IS 'Users belong to Groups';
 
 
 
@@ -355,56 +505,6 @@ COMMENT ON TABLE "public"."messages_recipients" IS 'Recipent of a message';
 
 
 
-CREATE TABLE IF NOT EXISTS "public"."orgs" (
-    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
-    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "title" "text" NOT NULL,
-    "metadata" "jsonb"
-);
-
-
-ALTER TABLE "public"."orgs" OWNER TO "postgres";
-
-
-COMMENT ON TABLE "public"."orgs" IS 'Organizations';
-
-
-
-CREATE TABLE IF NOT EXISTS "public"."orgs_invites" (
-    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
-    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "orgid" "uuid" NOT NULL,
-    "created_by" "uuid" NOT NULL,
-    "email" "text" NOT NULL,
-    "user_role" "text" NOT NULL,
-    "expires_at" timestamp with time zone DEFAULT ("now"() + '7 days'::interval) NOT NULL,
-    "metadata" "jsonb"
-);
-
-
-ALTER TABLE "public"."orgs_invites" OWNER TO "postgres";
-
-
-COMMENT ON TABLE "public"."orgs_invites" IS 'pending invitations to join an org';
-
-
-
-CREATE TABLE IF NOT EXISTS "public"."orgs_users" (
-    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
-    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "orgid" "uuid" NOT NULL,
-    "userid" "uuid" NOT NULL,
-    "user_role" "text" NOT NULL
-);
-
-
-ALTER TABLE "public"."orgs_users" OWNER TO "postgres";
-
-
-COMMENT ON TABLE "public"."orgs_users" IS 'Users belong to Orgs';
-
-
-
 CREATE TABLE IF NOT EXISTS "public"."profiles" (
     "id" "uuid" NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
@@ -423,126 +523,64 @@ COMMENT ON TABLE "public"."profiles" IS 'User profiles';
 
 
 
-CREATE TABLE IF NOT EXISTS "public"."properties" (
+CREATE TABLE IF NOT EXISTS "public"."questions" (
+    "category" "text",
+    "subcategory" "text",
+    "difficulty" "text",
+    "question" "text",
+    "a" "text",
+    "b" "text",
+    "c" "text",
+    "d" "text",
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "property_type" "text",
-    "property_subtype" "text",
-    "address" "text",
-    "address2" "text",
-    "city" "text",
-    "region" "text",
-    "postal" "text",
-    "country" "text",
-    "lat" numeric,
-    "lng" numeric,
-    "beds" numeric,
-    "baths" numeric,
-    "living_area" numeric,
-    "land_area" numeric,
-    "year_built" numeric,
-    "hoa_fees" numeric,
-    "notes" "text",
-    "metadata" "jsonb",
-    "orgid" "uuid" NOT NULL,
-    "userid" "uuid" NOT NULL,
-    "title" "text",
-    "subtitle" "text"
-);
-
-
-ALTER TABLE "public"."properties" OWNER TO "postgres";
-
-
-COMMENT ON TABLE "public"."properties" IS 'Properties for sale or rent';
-
-
-
-COMMENT ON COLUMN "public"."properties"."title" IS 'property title';
-
-
-
-COMMENT ON COLUMN "public"."properties"."subtitle" IS 'property subtitle';
-
-
-
-CREATE TABLE IF NOT EXISTS "public"."properties_contacts" (
-    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
-    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "propertyid" "uuid" NOT NULL,
-    "contactid" "uuid" NOT NULL,
-    "contact_type" "text" NOT NULL,
-    "notes" "text",
-    "metadata" "jsonb",
-    "orgid" "uuid" NOT NULL
-);
-
-
-ALTER TABLE "public"."properties_contacts" OWNER TO "postgres";
-
-
-COMMENT ON TABLE "public"."properties_contacts" IS 'people associated with a property';
-
-
-
-CREATE TABLE IF NOT EXISTS "public"."transactions" (
-    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
-    "parentid" "uuid",
-    "orgid" "uuid" NOT NULL,
-    "propertyid" "uuid" NOT NULL,
-    "userid" "uuid" NOT NULL,
-    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "start_date" timestamp with time zone,
-    "end_date" timestamp with time zone,
-    "type" "text" NOT NULL,
-    "status" "text" NOT NULL,
-    "description" "text",
-    "notes" "text",
-    "amount" numeric DEFAULT '0'::numeric NOT NULL,
-    "balance" numeric DEFAULT '0'::numeric NOT NULL,
-    "metadata" "jsonb",
-    "contactid" "uuid"
-);
-
-
-ALTER TABLE "public"."transactions" OWNER TO "postgres";
-
-
-COMMENT ON TABLE "public"."transactions" IS 'property transactions';
-
-
-
-COMMENT ON COLUMN "public"."transactions"."contactid" IS 'id of contact for the transaction, i.e. for a rental this would point to the renter';
-
-
-
-CREATE TABLE IF NOT EXISTS "public"."transactions_events" (
-    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
-    "transactionid" "uuid" NOT NULL,
-    "orgid" "uuid" NOT NULL,
-    "propertyid" "uuid" NOT NULL,
-    "userid" "uuid" NOT NULL,
-    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "type" "text" NOT NULL,
-    "status" "text" NOT NULL,
-    "description" "text",
-    "notes" "text",
-    "amount" numeric DEFAULT '0'::numeric NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"(),
+    "embedding" "extensions"."vector"(384),
     "metadata" "jsonb"
 );
 
 
-ALTER TABLE "public"."transactions_events" OWNER TO "postgres";
+ALTER TABLE "public"."questions" OWNER TO "postgres";
 
 
-COMMENT ON TABLE "public"."transactions_events" IS 'events related to a transaction';
+COMMENT ON TABLE "public"."questions" IS 'trivia questions';
+
+
+
+CREATE TABLE IF NOT EXISTS "public"."similar_questions" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "id1" "uuid" NOT NULL,
+    "id2" "uuid" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "similarity" numeric NOT NULL
+);
+
+
+ALTER TABLE "public"."similar_questions" OWNER TO "postgres";
+
+
+ALTER TABLE ONLY "public"."categories"
+    ADD CONSTRAINT "categories_pkey" PRIMARY KEY ("id");
 
 
 
 ALTER TABLE ONLY "public"."contacts"
     ADD CONSTRAINT "contacts_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."groups_invites"
+    ADD CONSTRAINT "groups_invites_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."groups"
+    ADD CONSTRAINT "groups_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."groups_users"
+    ADD CONSTRAINT "groups_users_pkey" PRIMARY KEY ("id");
 
 
 
@@ -556,61 +594,87 @@ ALTER TABLE ONLY "public"."messages_recipients"
 
 
 
-ALTER TABLE ONLY "public"."orgs_invites"
-    ADD CONSTRAINT "orgs_invites_pkey" PRIMARY KEY ("id");
-
-
-
-ALTER TABLE ONLY "public"."orgs"
-    ADD CONSTRAINT "orgs_pkey" PRIMARY KEY ("id");
-
-
-
-ALTER TABLE ONLY "public"."orgs_users"
-    ADD CONSTRAINT "orgs_users_pkey" PRIMARY KEY ("id");
-
-
-
 ALTER TABLE ONLY "public"."profiles"
     ADD CONSTRAINT "profile_pkey" PRIMARY KEY ("id");
 
 
 
-ALTER TABLE ONLY "public"."properties_contacts"
-    ADD CONSTRAINT "properties_contacts_pkey" PRIMARY KEY ("id");
+ALTER TABLE ONLY "public"."questions"
+    ADD CONSTRAINT "questions_pkey" PRIMARY KEY ("id");
 
 
 
-ALTER TABLE ONLY "public"."properties"
-    ADD CONSTRAINT "properties_pkey" PRIMARY KEY ("id");
+ALTER TABLE ONLY "public"."similar_questions"
+    ADD CONSTRAINT "similar_questions_pkey" PRIMARY KEY ("id");
 
 
 
-ALTER TABLE ONLY "public"."transactions_events"
-    ADD CONSTRAINT "transactions_events_pkey" PRIMARY KEY ("id");
+CREATE INDEX "groups_users_groupid_idx" ON "public"."groups_users" USING "btree" ("groupid");
 
 
 
-ALTER TABLE ONLY "public"."transactions"
-    ADD CONSTRAINT "transactions_pkey" PRIMARY KEY ("id");
+CREATE INDEX "groups_users_userid_idx" ON "public"."groups_users" USING "btree" ("userid");
 
 
 
-CREATE INDEX "orgs_users_orgid_idx" ON "public"."orgs_users" USING "btree" ("orgid");
+CREATE INDEX "lower_question" ON "public"."questions" USING "btree" ("lower"("question"));
 
 
 
-CREATE INDEX "orgs_users_userid_idx" ON "public"."orgs_users" USING "btree" ("userid");
+CREATE INDEX "questions_category" ON "public"."questions" USING "btree" ("category");
 
 
 
-ALTER TABLE ONLY "public"."contacts"
-    ADD CONSTRAINT "contacts_orgid_fkey" FOREIGN KEY ("orgid") REFERENCES "public"."orgs"("id") ON DELETE CASCADE;
+CREATE INDEX "questions_created_at_idx" ON "public"."questions" USING "btree" ("created_at");
+
+
+
+CREATE INDEX "questions_difficulty" ON "public"."questions" USING "btree" ("difficulty");
+
+
+
+CREATE INDEX "questions_embedding_idx" ON "public"."questions" USING "hnsw" ("embedding" "extensions"."vector_cosine_ops") WITH ("m"='16', "ef_construction"='64');
+
+
+
+CREATE INDEX "questions_question_idx" ON "public"."questions" USING "btree" ("question");
+
+
+
+CREATE INDEX "questions_updated_at" ON "public"."questions" USING "btree" ("updated_at");
+
+
+
+CREATE INDEX "similar_questions_id1" ON "public"."similar_questions" USING "btree" ("id1");
+
+
+
+CREATE INDEX "similar_questions_id2" ON "public"."similar_questions" USING "btree" ("id2");
 
 
 
 ALTER TABLE ONLY "public"."contacts"
     ADD CONSTRAINT "contacts_userid_fkey" FOREIGN KEY ("userid") REFERENCES "auth"."users"("id");
+
+
+
+ALTER TABLE ONLY "public"."groups_invites"
+    ADD CONSTRAINT "groups_invites_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."groups_invites"
+    ADD CONSTRAINT "groups_invites_groupid_fkey" FOREIGN KEY ("groupid") REFERENCES "public"."groups"("id");
+
+
+
+ALTER TABLE ONLY "public"."groups_users"
+    ADD CONSTRAINT "groups_users_groupid_fkey" FOREIGN KEY ("groupid") REFERENCES "public"."groups"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."groups_users"
+    ADD CONSTRAINT "groups_users_userid_fkey" FOREIGN KEY ("userid") REFERENCES "auth"."users"("id");
 
 
 
@@ -634,83 +698,8 @@ ALTER TABLE ONLY "public"."messages"
 
 
 
-ALTER TABLE ONLY "public"."orgs_invites"
-    ADD CONSTRAINT "orgs_invites_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
-
-
-
-ALTER TABLE ONLY "public"."orgs_invites"
-    ADD CONSTRAINT "orgs_invites_orgid_fkey" FOREIGN KEY ("orgid") REFERENCES "public"."orgs"("id");
-
-
-
-ALTER TABLE ONLY "public"."orgs_users"
-    ADD CONSTRAINT "orgs_users_orgid_fkey" FOREIGN KEY ("orgid") REFERENCES "public"."orgs"("id") ON DELETE CASCADE;
-
-
-
-ALTER TABLE ONLY "public"."orgs_users"
-    ADD CONSTRAINT "orgs_users_userid_fkey" FOREIGN KEY ("userid") REFERENCES "auth"."users"("id");
-
-
-
 ALTER TABLE ONLY "public"."profiles"
     ADD CONSTRAINT "profile_id_fkey" FOREIGN KEY ("id") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
-
-
-
-ALTER TABLE ONLY "public"."properties_contacts"
-    ADD CONSTRAINT "properties_contacts_contactid_fkey" FOREIGN KEY ("contactid") REFERENCES "public"."contacts"("id") ON DELETE CASCADE;
-
-
-
-ALTER TABLE ONLY "public"."properties_contacts"
-    ADD CONSTRAINT "properties_contacts_orgid_fkey" FOREIGN KEY ("orgid") REFERENCES "public"."orgs"("id") ON DELETE CASCADE;
-
-
-
-ALTER TABLE ONLY "public"."properties_contacts"
-    ADD CONSTRAINT "properties_contacts_propertyid_fkey" FOREIGN KEY ("propertyid") REFERENCES "public"."properties"("id") ON DELETE CASCADE;
-
-
-
-ALTER TABLE ONLY "public"."transactions"
-    ADD CONSTRAINT "transactions_contactid_fkey" FOREIGN KEY ("contactid") REFERENCES "public"."contacts"("id") ON DELETE CASCADE;
-
-
-
-ALTER TABLE ONLY "public"."transactions_events"
-    ADD CONSTRAINT "transactions_events_orgid_fkey" FOREIGN KEY ("orgid") REFERENCES "public"."orgs"("id");
-
-
-
-ALTER TABLE ONLY "public"."transactions_events"
-    ADD CONSTRAINT "transactions_events_propertyid_fkey" FOREIGN KEY ("propertyid") REFERENCES "public"."properties"("id");
-
-
-
-ALTER TABLE ONLY "public"."transactions_events"
-    ADD CONSTRAINT "transactions_events_transactionid_fkey" FOREIGN KEY ("transactionid") REFERENCES "public"."transactions"("id") ON DELETE CASCADE;
-
-
-
-ALTER TABLE ONLY "public"."transactions_events"
-    ADD CONSTRAINT "transactions_events_userid_fkey" FOREIGN KEY ("userid") REFERENCES "auth"."users"("id");
-
-
-
-ALTER TABLE ONLY "public"."transactions"
-    ADD CONSTRAINT "transactions_orgid_fkey" FOREIGN KEY ("orgid") REFERENCES "public"."orgs"("id") ON DELETE CASCADE;
-
-
-
-ALTER TABLE ONLY "public"."transactions"
-    ADD CONSTRAINT "transactions_propertyid_fkey" FOREIGN KEY ("propertyid") REFERENCES "public"."properties"("id") ON DELETE CASCADE;
-
-
-
-ALTER TABLE ONLY "public"."transactions"
-    ADD CONSTRAINT "transactions_userid_fkey" FOREIGN KEY ("userid") REFERENCES "auth"."users"("id");
 
 
 
@@ -722,57 +711,49 @@ CREATE POLICY "Profiles are created automatically by trigger" ON "public"."profi
 
 
 
-CREATE POLICY "TEMPORARY - open viewing" ON "public"."orgs" FOR SELECT USING (true);
+CREATE POLICY "TEMPORARY - open viewing" ON "public"."groups" FOR SELECT USING (true);
 
 
 
-CREATE POLICY "User must belong to org" ON "public"."contacts" TO "authenticated" USING ((( SELECT "public"."get_org_role"("contacts"."orgid") AS "get_org_role") IS NOT NULL)) WITH CHECK ((( SELECT "public"."get_org_role"("contacts"."orgid") AS "get_org_role") IS NOT NULL));
+CREATE POLICY "User must belong to group" ON "public"."contacts" TO "authenticated" USING ((( SELECT "public"."get_group_role"("contacts"."groupid") AS "get_group_role") IS NOT NULL)) WITH CHECK ((( SELECT "public"."get_group_role"("contacts"."groupid") AS "get_group_role") IS NOT NULL));
 
 
 
-CREATE POLICY "admin or invitee can delete an invite" ON "public"."orgs_invites" FOR DELETE TO "authenticated" USING ((("created_by" = ( SELECT "auth"."uid"() AS "uid")) OR ("email" = ( SELECT "auth"."email"() AS "uid"))));
+CREATE POLICY "admin or invitee can delete an invite" ON "public"."groups_invites" FOR DELETE TO "authenticated" USING ((("created_by" = ( SELECT "auth"."uid"() AS "uid")) OR ("email" = ( SELECT "auth"."email"() AS "uid"))));
 
 
 
-CREATE POLICY "admin or invitee can view invite" ON "public"."orgs_invites" FOR SELECT TO "authenticated" USING ((("created_by" = ( SELECT "auth"."uid"() AS "uid")) OR ("email" = ( SELECT "auth"."email"() AS "email"))));
+CREATE POLICY "admin or invitee can view invite" ON "public"."groups_invites" FOR SELECT TO "authenticated" USING ((("created_by" = ( SELECT "auth"."uid"() AS "uid")) OR ("email" = ( SELECT "auth"."email"() AS "email"))));
 
 
 
-CREATE POLICY "any org member can view transactions" ON "public"."transactions" FOR SELECT TO "authenticated" USING (("public"."get_org_role_for_user"("orgid", "userid") IS NOT NULL));
-
-
-
-CREATE POLICY "anyone can view" ON "public"."properties" FOR SELECT USING (true);
-
+ALTER TABLE "public"."categories" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."contacts" ENABLE ROW LEVEL SECURITY;
 
 
-CREATE POLICY "delete not allowed" ON "public"."transactions_events" FOR DELETE USING (false);
+CREATE POLICY "group admins can create invites" ON "public"."groups_invites" FOR INSERT TO "authenticated" WITH CHECK (((( SELECT "public"."get_group_role"("groups_invites"."groupid") AS "get_group_role") = 'Admin'::"text") AND ("created_by" = ( SELECT "auth"."uid"() AS "uid"))));
 
 
 
-CREATE POLICY "deletion not allowed" ON "public"."properties" FOR DELETE USING (false);
+CREATE POLICY "group admins can updated policies they created" ON "public"."groups_invites" FOR UPDATE TO "authenticated" USING (((( SELECT "public"."get_group_role"("groups_invites"."groupid") AS "get_group_role") = 'Admin'::"text") AND ("created_by" = ( SELECT "auth"."uid"() AS "uid")))) WITH CHECK (((( SELECT "public"."get_group_role"("groups_invites"."groupid") AS "get_group_role") = 'Admin'::"text") AND ("created_by" = ( SELECT "auth"."uid"() AS "uid"))));
 
 
 
-CREATE POLICY "deletion not allowed" ON "public"."transactions" FOR DELETE USING (false);
+ALTER TABLE "public"."groups" ENABLE ROW LEVEL SECURITY;
 
 
+ALTER TABLE "public"."groups_invites" ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "insert: user must be  org admin or manager" ON "public"."properties" FOR INSERT WITH CHECK (("public"."get_org_role_for_user"("orgid", "auth"."uid"()) = ANY (ARRAY['Admin'::"text", 'Manager'::"text"])));
 
+ALTER TABLE "public"."groups_users" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."messages" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."messages_recipients" ENABLE ROW LEVEL SECURITY;
-
-
-CREATE POLICY "must be org admin or manager" ON "public"."properties_contacts" USING ((( SELECT "public"."get_org_role"("properties_contacts"."orgid") AS "get_org_role") = ANY (ARRAY['Admin'::"text", 'Manager'::"text"]))) WITH CHECK ((( SELECT "public"."get_org_role"("properties_contacts"."orgid") AS "get_org_role") = ANY (ARRAY['Admin'::"text", 'Manager'::"text"])));
-
 
 
 CREATE POLICY "must be sender to delete" ON "public"."messages" FOR DELETE USING (("sender" = ( SELECT "auth"."uid"() AS "uid")));
@@ -783,27 +764,6 @@ CREATE POLICY "must be sender to update" ON "public"."messages" FOR UPDATE USING
 
 
 
-CREATE POLICY "org admins can create invites" ON "public"."orgs_invites" FOR INSERT TO "authenticated" WITH CHECK (((( SELECT "public"."get_org_role"("orgs_invites"."orgid") AS "get_org_role") = 'Admin'::"text") AND ("created_by" = ( SELECT "auth"."uid"() AS "uid"))));
-
-
-
-CREATE POLICY "org admins can updated policies they created" ON "public"."orgs_invites" FOR UPDATE TO "authenticated" USING (((( SELECT "public"."get_org_role"("orgs_invites"."orgid") AS "get_org_role") = 'Admin'::"text") AND ("created_by" = ( SELECT "auth"."uid"() AS "uid")))) WITH CHECK (((( SELECT "public"."get_org_role"("orgs_invites"."orgid") AS "get_org_role") = 'Admin'::"text") AND ("created_by" = ( SELECT "auth"."uid"() AS "uid"))));
-
-
-
-CREATE POLICY "org role must be Admin or Manager" ON "public"."properties" FOR UPDATE USING (("public"."get_org_role_for_user"("orgid", "auth"."uid"()) = ANY (ARRAY['Admin'::"text", 'Manager'::"text"]))) WITH CHECK (("public"."get_org_role_for_user"("orgid", "auth"."uid"()) = ANY (ARRAY['Admin'::"text", 'Manager'::"text"])));
-
-
-
-ALTER TABLE "public"."orgs" ENABLE ROW LEVEL SECURITY;
-
-
-ALTER TABLE "public"."orgs_invites" ENABLE ROW LEVEL SECURITY;
-
-
-ALTER TABLE "public"."orgs_users" ENABLE ROW LEVEL SECURITY;
-
-
 ALTER TABLE "public"."profiles" ENABLE ROW LEVEL SECURITY;
 
 
@@ -811,10 +771,7 @@ CREATE POLICY "profiles cannot be deleted" ON "public"."profiles" FOR DELETE USI
 
 
 
-ALTER TABLE "public"."properties" ENABLE ROW LEVEL SECURITY;
-
-
-ALTER TABLE "public"."properties_contacts" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "public"."questions" ENABLE ROW LEVEL SECURITY;
 
 
 CREATE POLICY "recipient can update" ON "public"."messages_recipients" FOR UPDATE USING (("recipient" = ( SELECT "auth"."uid"() AS "uid"))) WITH CHECK (("recipient" = ( SELECT "auth"."uid"() AS "uid")));
@@ -843,47 +800,24 @@ CREATE POLICY "sender or recipients can view" ON "public"."messages" FOR SELECT 
 
 
 
-ALTER TABLE "public"."transactions" ENABLE ROW LEVEL SECURITY;
-
-
-ALTER TABLE "public"."transactions_events" ENABLE ROW LEVEL SECURITY;
-
-
-CREATE POLICY "user belong to org to view" ON "public"."transactions_events" FOR SELECT TO "authenticated" USING (("public"."get_org_role_for_user"("orgid", "userid") IS NOT NULL));
-
-
-
-CREATE POLICY "user must be admin or manager of org to insert" ON "public"."transactions_events" FOR INSERT TO "authenticated" WITH CHECK (("public"."get_org_role_for_user"("orgid", "userid") = ANY (ARRAY['Admin'::"text", 'Manager'::"text"])));
-
-
-
-CREATE POLICY "user must be admin or manager of org to update" ON "public"."transactions_events" FOR UPDATE TO "authenticated" USING (("public"."get_org_role_for_user"("orgid", "userid") = ANY (ARRAY['Admin'::"text", 'Manager'::"text"]))) WITH CHECK (("public"."get_org_role_for_user"("orgid", "userid") = ANY (ARRAY['Admin'::"text", 'Manager'::"text"])));
-
-
-
-CREATE POLICY "user must be an org admin or manager to insert" ON "public"."transactions" FOR INSERT TO "authenticated" WITH CHECK (("public"."get_org_role_for_user"("orgid", "userid") = ANY (ARRAY['Admin'::"text", 'Manager'::"text"])));
-
-
-
-CREATE POLICY "user must be org admin or manager to update" ON "public"."transactions" FOR UPDATE USING (("public"."get_org_role_for_user"("orgid", "userid") = ANY (ARRAY['Admin'::"text", 'Manager'::"text"]))) WITH CHECK (("public"."get_org_role_for_user"("orgid", "userid") = ANY (ARRAY['Admin'::"text", 'Manager'::"text"])));
-
+ALTER TABLE "public"."similar_questions" ENABLE ROW LEVEL SECURITY;
 
 
 CREATE POLICY "users can modify their own profile" ON "public"."profiles" FOR UPDATE USING (("id" = "auth"."uid"())) WITH CHECK (("id" = "auth"."uid"()));
 
 
 
-CREATE POLICY "users can view profiles from invite creators" ON "public"."profiles" FOR SELECT USING ((("id" = ( SELECT "auth"."uid"() AS "uid")) OR ("id" IN ( SELECT "orgs_invites"."created_by"
-   FROM "public"."orgs_invites"))));
+CREATE POLICY "users can view profiles from invite creators" ON "public"."profiles" FOR SELECT USING ((("id" = ( SELECT "auth"."uid"() AS "uid")) OR ("id" IN ( SELECT "groups_invites"."created_by"
+   FROM "public"."groups_invites"))));
 
 
 
-CREATE POLICY "users can view their own profiles or those in their own orgs" ON "public"."profiles" FOR SELECT USING ((("id" = ( SELECT "auth"."uid"() AS "uid")) OR ("id" IN ( SELECT "orgs_users"."userid"
-   FROM "public"."orgs_users"))));
+CREATE POLICY "users can view their own profiles or those in their own groups" ON "public"."profiles" FOR SELECT USING ((("id" = ( SELECT "auth"."uid"() AS "uid")) OR ("id" IN ( SELECT "groups_users"."userid"
+   FROM "public"."groups_users"))));
 
 
 
-CREATE POLICY "users can view their own records or records for orgs they belon" ON "public"."orgs_users" FOR SELECT USING ((("userid" = ( SELECT "auth"."uid"() AS "uid")) OR ("orgid" IN ( SELECT "public"."get_user_orgids"("auth"."uid"()) AS "get_user_orgids"))));
+CREATE POLICY "users can view their own records or records for groups they bel" ON "public"."groups_users" FOR SELECT USING ((("userid" = ( SELECT "auth"."uid"() AS "uid")) OR ("groupid" IN ( SELECT "public"."get_user_groupids"("auth"."uid"()) AS "get_user_groupids"))));
 
 
 
@@ -898,37 +832,43 @@ GRANT ALL ON FUNCTION "public"."accept_invite"("invite_id" "uuid") TO "service_r
 
 
 
-GRANT ALL ON FUNCTION "public"."get_my_orgids"() TO "anon";
-GRANT ALL ON FUNCTION "public"."get_my_orgids"() TO "authenticated";
-GRANT ALL ON FUNCTION "public"."get_my_orgids"() TO "service_role";
+GRANT ALL ON FUNCTION "public"."find_and_insert_similar_questions"("offset_val" integer) TO "anon";
+GRANT ALL ON FUNCTION "public"."find_and_insert_similar_questions"("offset_val" integer) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."find_and_insert_similar_questions"("offset_val" integer) TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."get_my_orgs"() TO "anon";
-GRANT ALL ON FUNCTION "public"."get_my_orgs"() TO "authenticated";
-GRANT ALL ON FUNCTION "public"."get_my_orgs"() TO "service_role";
+GRANT ALL ON FUNCTION "public"."get_group_role"("group_id" "uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."get_group_role"("group_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_group_role"("group_id" "uuid") TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."get_org_role"("org_id" "uuid") TO "anon";
-GRANT ALL ON FUNCTION "public"."get_org_role"("org_id" "uuid") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."get_org_role"("org_id" "uuid") TO "service_role";
+GRANT ALL ON FUNCTION "public"."get_group_role_for_user"("group_id" "uuid", "user_id" "uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."get_group_role_for_user"("group_id" "uuid", "user_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_group_role_for_user"("group_id" "uuid", "user_id" "uuid") TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."get_org_role_for_user"("org_id" "uuid", "user_id" "uuid") TO "anon";
-GRANT ALL ON FUNCTION "public"."get_org_role_for_user"("org_id" "uuid", "user_id" "uuid") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."get_org_role_for_user"("org_id" "uuid", "user_id" "uuid") TO "service_role";
+GRANT ALL ON FUNCTION "public"."get_group_users"("group_id" "uuid") TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."get_org_users"("org_id" "uuid") TO "service_role";
+GRANT ALL ON FUNCTION "public"."get_my_groupids"() TO "anon";
+GRANT ALL ON FUNCTION "public"."get_my_groupids"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_my_groupids"() TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."get_user_orgids"("p_userid" "uuid") TO "anon";
-GRANT ALL ON FUNCTION "public"."get_user_orgids"("p_userid" "uuid") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."get_user_orgids"("p_userid" "uuid") TO "service_role";
+GRANT ALL ON FUNCTION "public"."get_my_groups"() TO "anon";
+GRANT ALL ON FUNCTION "public"."get_my_groups"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_my_groups"() TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."get_user_groupids"("p_userid" "uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."get_user_groupids"("p_userid" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_user_groupids"("p_userid" "uuid") TO "service_role";
 
 
 
@@ -948,9 +888,45 @@ GRANT ALL ON FUNCTION "public"."reject_invite"("invite_id" "uuid") TO "service_r
 
 
 
+GRANT ALL ON TABLE "public"."categories" TO "anon";
+GRANT ALL ON TABLE "public"."categories" TO "authenticated";
+GRANT ALL ON TABLE "public"."categories" TO "service_role";
+
+
+
+GRANT ALL ON SEQUENCE "public"."categories_id_seq" TO "anon";
+GRANT ALL ON SEQUENCE "public"."categories_id_seq" TO "authenticated";
+GRANT ALL ON SEQUENCE "public"."categories_id_seq" TO "service_role";
+
+
+
 GRANT ALL ON TABLE "public"."contacts" TO "anon";
 GRANT ALL ON TABLE "public"."contacts" TO "authenticated";
 GRANT ALL ON TABLE "public"."contacts" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."duplicates" TO "anon";
+GRANT ALL ON TABLE "public"."duplicates" TO "authenticated";
+GRANT ALL ON TABLE "public"."duplicates" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."groups" TO "anon";
+GRANT ALL ON TABLE "public"."groups" TO "authenticated";
+GRANT ALL ON TABLE "public"."groups" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."groups_invites" TO "anon";
+GRANT ALL ON TABLE "public"."groups_invites" TO "authenticated";
+GRANT ALL ON TABLE "public"."groups_invites" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."groups_users" TO "anon";
+GRANT ALL ON TABLE "public"."groups_users" TO "authenticated";
+GRANT ALL ON TABLE "public"."groups_users" TO "service_role";
 
 
 
@@ -966,51 +942,21 @@ GRANT ALL ON TABLE "public"."messages_recipients" TO "service_role";
 
 
 
-GRANT ALL ON TABLE "public"."orgs" TO "anon";
-GRANT ALL ON TABLE "public"."orgs" TO "authenticated";
-GRANT ALL ON TABLE "public"."orgs" TO "service_role";
-
-
-
-GRANT ALL ON TABLE "public"."orgs_invites" TO "anon";
-GRANT ALL ON TABLE "public"."orgs_invites" TO "authenticated";
-GRANT ALL ON TABLE "public"."orgs_invites" TO "service_role";
-
-
-
-GRANT ALL ON TABLE "public"."orgs_users" TO "anon";
-GRANT ALL ON TABLE "public"."orgs_users" TO "authenticated";
-GRANT ALL ON TABLE "public"."orgs_users" TO "service_role";
-
-
-
 GRANT ALL ON TABLE "public"."profiles" TO "anon";
 GRANT ALL ON TABLE "public"."profiles" TO "authenticated";
 GRANT ALL ON TABLE "public"."profiles" TO "service_role";
 
 
 
-GRANT ALL ON TABLE "public"."properties" TO "anon";
-GRANT ALL ON TABLE "public"."properties" TO "authenticated";
-GRANT ALL ON TABLE "public"."properties" TO "service_role";
+GRANT ALL ON TABLE "public"."questions" TO "anon";
+GRANT ALL ON TABLE "public"."questions" TO "authenticated";
+GRANT ALL ON TABLE "public"."questions" TO "service_role";
 
 
 
-GRANT ALL ON TABLE "public"."properties_contacts" TO "anon";
-GRANT ALL ON TABLE "public"."properties_contacts" TO "authenticated";
-GRANT ALL ON TABLE "public"."properties_contacts" TO "service_role";
-
-
-
-GRANT ALL ON TABLE "public"."transactions" TO "anon";
-GRANT ALL ON TABLE "public"."transactions" TO "authenticated";
-GRANT ALL ON TABLE "public"."transactions" TO "service_role";
-
-
-
-GRANT ALL ON TABLE "public"."transactions_events" TO "anon";
-GRANT ALL ON TABLE "public"."transactions_events" TO "authenticated";
-GRANT ALL ON TABLE "public"."transactions_events" TO "service_role";
+GRANT ALL ON TABLE "public"."similar_questions" TO "anon";
+GRANT ALL ON TABLE "public"."similar_questions" TO "authenticated";
+GRANT ALL ON TABLE "public"."similar_questions" TO "service_role";
 
 
 

@@ -9,6 +9,24 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      categories: {
+        Row: {
+          created_at: string
+          id: number
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          title: string
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          title?: string
+        }
+        Relationships: []
+      }
       contacts: {
         Row: {
           address: string | null
@@ -19,11 +37,11 @@ export type Database = {
           created_at: string
           email: string | null
           firstname: string | null
+          groupid: string
           id: string
           lastname: string | null
           metadata: Json | null
           notes: string | null
-          orgid: string
           phone: string | null
           postal: string | null
           region: string | null
@@ -39,11 +57,11 @@ export type Database = {
           created_at?: string
           email?: string | null
           firstname?: string | null
+          groupid: string
           id?: string
           lastname?: string | null
           metadata?: Json | null
           notes?: string | null
-          orgid: string
           phone?: string | null
           postal?: string | null
           region?: string | null
@@ -59,23 +77,167 @@ export type Database = {
           created_at?: string
           email?: string | null
           firstname?: string | null
+          groupid?: string
           id?: string
           lastname?: string | null
           metadata?: Json | null
           notes?: string | null
-          orgid?: string
           phone?: string | null
           postal?: string | null
           region?: string | null
           updated_at?: string
           userid?: string | null
         }
+        Relationships: []
+      }
+      duplicates: {
+        Row: {
+          a: string | null
+          b: string | null
+          c: string | null
+          category: string | null
+          created_at: string | null
+          d: string | null
+          difficulty: string | null
+          duplicate_id: string | null
+          embedding: string | null
+          id: string | null
+          metadata: Json | null
+          question: string | null
+          subcategory: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          a?: string | null
+          b?: string | null
+          c?: string | null
+          category?: string | null
+          created_at?: string | null
+          d?: string | null
+          difficulty?: string | null
+          duplicate_id?: string | null
+          embedding?: string | null
+          id?: string | null
+          metadata?: Json | null
+          question?: string | null
+          subcategory?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          a?: string | null
+          b?: string | null
+          c?: string | null
+          category?: string | null
+          created_at?: string | null
+          d?: string | null
+          difficulty?: string | null
+          duplicate_id?: string | null
+          embedding?: string | null
+          id?: string | null
+          metadata?: Json | null
+          question?: string | null
+          subcategory?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      groups: {
+        Row: {
+          created_at: string
+          id: string
+          metadata: Json | null
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          title: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          title?: string
+        }
+        Relationships: []
+      }
+      groups_invites: {
+        Row: {
+          created_at: string
+          created_by: string
+          email: string
+          expires_at: string
+          groupid: string
+          id: string
+          metadata: Json | null
+          user_role: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          email: string
+          expires_at?: string
+          groupid: string
+          id?: string
+          metadata?: Json | null
+          user_role: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          email?: string
+          expires_at?: string
+          groupid?: string
+          id?: string
+          metadata?: Json | null
+          user_role?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "contacts_orgid_fkey"
-            columns: ["orgid"]
+            foreignKeyName: "groups_invites_created_by_fkey"
+            columns: ["created_by"]
             isOneToOne: false
-            referencedRelation: "orgs"
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "groups_invites_groupid_fkey"
+            columns: ["groupid"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      groups_users: {
+        Row: {
+          created_at: string
+          groupid: string
+          id: string
+          user_role: string
+          userid: string
+        }
+        Insert: {
+          created_at?: string
+          groupid: string
+          id?: string
+          user_role: string
+          userid: string
+        }
+        Update: {
+          created_at?: string
+          groupid?: string
+          id?: string
+          user_role?: string
+          userid?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "groups_users_groupid_fkey"
+            columns: ["groupid"]
+            isOneToOne: false
+            referencedRelation: "groups"
             referencedColumns: ["id"]
           },
         ]
@@ -163,107 +325,6 @@ export type Database = {
           },
         ]
       }
-      orgs: {
-        Row: {
-          created_at: string
-          id: string
-          metadata: Json | null
-          title: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          metadata?: Json | null
-          title: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          metadata?: Json | null
-          title?: string
-        }
-        Relationships: []
-      }
-      orgs_invites: {
-        Row: {
-          created_at: string
-          created_by: string
-          email: string
-          expires_at: string
-          id: string
-          metadata: Json | null
-          orgid: string
-          user_role: string
-        }
-        Insert: {
-          created_at?: string
-          created_by: string
-          email: string
-          expires_at?: string
-          id?: string
-          metadata?: Json | null
-          orgid: string
-          user_role: string
-        }
-        Update: {
-          created_at?: string
-          created_by?: string
-          email?: string
-          expires_at?: string
-          id?: string
-          metadata?: Json | null
-          orgid?: string
-          user_role?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "orgs_invites_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "orgs_invites_orgid_fkey"
-            columns: ["orgid"]
-            isOneToOne: false
-            referencedRelation: "orgs"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      orgs_users: {
-        Row: {
-          created_at: string
-          id: string
-          orgid: string
-          user_role: string
-          userid: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          orgid: string
-          user_role: string
-          userid: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          orgid?: string
-          user_role?: string
-          userid?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "orgs_users_orgid_fkey"
-            columns: ["orgid"]
-            isOneToOne: false
-            referencedRelation: "orgs"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       profiles: {
         Row: {
           bio: string | null
@@ -294,293 +355,77 @@ export type Database = {
         }
         Relationships: []
       }
-      properties: {
+      questions: {
         Row: {
-          address: string | null
-          address2: string | null
-          baths: number | null
-          beds: number | null
-          city: string | null
-          country: string | null
+          a: string | null
+          b: string | null
+          c: string | null
+          category: string | null
           created_at: string
-          hoa_fees: number | null
+          d: string | null
+          difficulty: string | null
+          embedding: string | null
           id: string
-          land_area: number | null
-          lat: number | null
-          living_area: number | null
-          lng: number | null
           metadata: Json | null
-          notes: string | null
-          orgid: string
-          postal: string | null
-          property_subtype: string | null
-          property_type: string | null
-          region: string | null
-          subtitle: string | null
-          title: string | null
-          userid: string
-          year_built: number | null
+          question: string | null
+          subcategory: string | null
+          updated_at: string | null
         }
         Insert: {
-          address?: string | null
-          address2?: string | null
-          baths?: number | null
-          beds?: number | null
-          city?: string | null
-          country?: string | null
+          a?: string | null
+          b?: string | null
+          c?: string | null
+          category?: string | null
           created_at?: string
-          hoa_fees?: number | null
+          d?: string | null
+          difficulty?: string | null
+          embedding?: string | null
           id?: string
-          land_area?: number | null
-          lat?: number | null
-          living_area?: number | null
-          lng?: number | null
           metadata?: Json | null
-          notes?: string | null
-          orgid: string
-          postal?: string | null
-          property_subtype?: string | null
-          property_type?: string | null
-          region?: string | null
-          subtitle?: string | null
-          title?: string | null
-          userid: string
-          year_built?: number | null
+          question?: string | null
+          subcategory?: string | null
+          updated_at?: string | null
         }
         Update: {
-          address?: string | null
-          address2?: string | null
-          baths?: number | null
-          beds?: number | null
-          city?: string | null
-          country?: string | null
+          a?: string | null
+          b?: string | null
+          c?: string | null
+          category?: string | null
           created_at?: string
-          hoa_fees?: number | null
+          d?: string | null
+          difficulty?: string | null
+          embedding?: string | null
           id?: string
-          land_area?: number | null
-          lat?: number | null
-          living_area?: number | null
-          lng?: number | null
           metadata?: Json | null
-          notes?: string | null
-          orgid?: string
-          postal?: string | null
-          property_subtype?: string | null
-          property_type?: string | null
-          region?: string | null
-          subtitle?: string | null
-          title?: string | null
-          userid?: string
-          year_built?: number | null
+          question?: string | null
+          subcategory?: string | null
+          updated_at?: string | null
         }
         Relationships: []
       }
-      properties_contacts: {
+      similar_questions: {
         Row: {
-          contact_type: string
-          contactid: string
           created_at: string
           id: string
-          metadata: Json | null
-          notes: string | null
-          orgid: string
-          propertyid: string
+          id1: string
+          id2: string
+          similarity: number
         }
         Insert: {
-          contact_type: string
-          contactid: string
           created_at?: string
           id?: string
-          metadata?: Json | null
-          notes?: string | null
-          orgid: string
-          propertyid: string
+          id1: string
+          id2: string
+          similarity: number
         }
         Update: {
-          contact_type?: string
-          contactid?: string
           created_at?: string
           id?: string
-          metadata?: Json | null
-          notes?: string | null
-          orgid?: string
-          propertyid?: string
+          id1?: string
+          id2?: string
+          similarity?: number
         }
-        Relationships: [
-          {
-            foreignKeyName: "properties_contacts_contactid_fkey"
-            columns: ["contactid"]
-            isOneToOne: false
-            referencedRelation: "contacts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "properties_contacts_orgid_fkey"
-            columns: ["orgid"]
-            isOneToOne: false
-            referencedRelation: "orgs"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "properties_contacts_propertyid_fkey"
-            columns: ["propertyid"]
-            isOneToOne: false
-            referencedRelation: "properties"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      transactions: {
-        Row: {
-          amount: number
-          balance: number
-          contactid: string | null
-          created_at: string
-          description: string | null
-          end_date: string | null
-          id: string
-          metadata: Json | null
-          notes: string | null
-          orgid: string
-          parentid: string | null
-          propertyid: string
-          start_date: string | null
-          status: string
-          type: string
-          updated_at: string
-          userid: string
-        }
-        Insert: {
-          amount?: number
-          balance?: number
-          contactid?: string | null
-          created_at?: string
-          description?: string | null
-          end_date?: string | null
-          id?: string
-          metadata?: Json | null
-          notes?: string | null
-          orgid: string
-          parentid?: string | null
-          propertyid: string
-          start_date?: string | null
-          status: string
-          type: string
-          updated_at?: string
-          userid: string
-        }
-        Update: {
-          amount?: number
-          balance?: number
-          contactid?: string | null
-          created_at?: string
-          description?: string | null
-          end_date?: string | null
-          id?: string
-          metadata?: Json | null
-          notes?: string | null
-          orgid?: string
-          parentid?: string | null
-          propertyid?: string
-          start_date?: string | null
-          status?: string
-          type?: string
-          updated_at?: string
-          userid?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "transactions_contactid_fkey"
-            columns: ["contactid"]
-            isOneToOne: false
-            referencedRelation: "contacts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "transactions_orgid_fkey"
-            columns: ["orgid"]
-            isOneToOne: false
-            referencedRelation: "orgs"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "transactions_propertyid_fkey"
-            columns: ["propertyid"]
-            isOneToOne: false
-            referencedRelation: "properties"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      transactions_events: {
-        Row: {
-          amount: number
-          created_at: string
-          description: string | null
-          id: string
-          metadata: Json | null
-          notes: string | null
-          orgid: string
-          propertyid: string
-          status: string
-          transactionid: string
-          type: string
-          updated_at: string
-          userid: string
-        }
-        Insert: {
-          amount?: number
-          created_at?: string
-          description?: string | null
-          id?: string
-          metadata?: Json | null
-          notes?: string | null
-          orgid: string
-          propertyid: string
-          status: string
-          transactionid: string
-          type: string
-          updated_at?: string
-          userid: string
-        }
-        Update: {
-          amount?: number
-          created_at?: string
-          description?: string | null
-          id?: string
-          metadata?: Json | null
-          notes?: string | null
-          orgid?: string
-          propertyid?: string
-          status?: string
-          transactionid?: string
-          type?: string
-          updated_at?: string
-          userid?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "transactions_events_orgid_fkey"
-            columns: ["orgid"]
-            isOneToOne: false
-            referencedRelation: "orgs"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "transactions_events_propertyid_fkey"
-            columns: ["propertyid"]
-            isOneToOne: false
-            referencedRelation: "properties"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "transactions_events_transactionid_fkey"
-            columns: ["transactionid"]
-            isOneToOne: false
-            referencedRelation: "transactions"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
     }
     Views: {
@@ -593,38 +438,28 @@ export type Database = {
         }
         Returns: boolean
       }
-      get_my_orgids: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          orgid: string
-        }[]
-      }
-      get_my_orgs: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          id: string
-          title: string
-          created_at: string
-          metadata: Json
-          user_role: string
-        }[]
-      }
-      get_org_role: {
+      find_and_insert_similar_questions: {
         Args: {
-          org_id: string
+          offset_val: number
+        }
+        Returns: Json
+      }
+      get_group_role: {
+        Args: {
+          group_id: string
         }
         Returns: string
       }
-      get_org_role_for_user: {
+      get_group_role_for_user: {
         Args: {
-          org_id: string
+          group_id: string
           user_id: string
         }
         Returns: string
       }
-      get_org_users: {
+      get_group_users: {
         Args: {
-          org_id: string
+          group_id: string
         }
         Returns: {
           id: string
@@ -635,12 +470,28 @@ export type Database = {
           raw_user_meta_data: Json
         }[]
       }
-      get_user_orgids: {
+      get_my_groupids: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          groupid: string
+        }[]
+      }
+      get_my_groups: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+          title: string
+          created_at: string
+          metadata: Json
+          user_role: string
+        }[]
+      }
+      get_user_groupids: {
         Args: {
           p_userid: string
         }
         Returns: {
-          orgid: string
+          groupid: string
         }[]
       }
       is_backup_running: {
