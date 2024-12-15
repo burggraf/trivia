@@ -44,5 +44,10 @@ BEGIN
     LIMIT p_limit;
 END;
 $$
+SECURITY DEFINER SET search_path = public, pg_temp
 LANGUAGE plpgsql;
+
+-- revoke anon access to function
+-- "authenticated" still has access here...
+REVOKE EXECUTE ON FUNCTION get_random_unseen_questions(uuid[], text[], text[], integer) FROM PUBLIC;
 
