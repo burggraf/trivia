@@ -4,6 +4,15 @@ import { supabase } from "../_shared/supabase_client.ts";
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
+function generateRandomOrder() {
+  const letters = ["a", "b", "c", "d"];
+  for (let i = letters.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [letters[i], letters[j]] = [letters[j], letters[i]];
+  }
+  return letters.join("");
+}
+
 Deno.serve(async (req) => {
   // Handle CORS preflight request
   if (req.method === "OPTIONS") {
@@ -76,10 +85,16 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Add random order to each question
+    const questionsWithOrder = questions.map((question: any) => ({
+      ...question,
+      order: generateRandomOrder(),
+    }));
+
     // 4. Create a record in the games table
     const { data: game, error: gameError } = await supabase
       .from("games")
-      .insert({ groupid, metadata: { questions } })
+      .insert({ groupid, metadata: { questions: questionsWithOrder } })
       .select()
       .single();
 
