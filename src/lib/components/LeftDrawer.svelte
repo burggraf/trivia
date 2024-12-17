@@ -3,7 +3,7 @@
   import * as Sidebar from "$lib/components/ui/sidebar/index.js";
   import SearchForm from "$lib/components/search-form.svelte";
   import * as Collapsible from "$lib/components/ui/collapsible/index.js";
-  import GroupSwitcher from "@/components/group-switcher.svelte";
+  import GroupSwitcher from "$lib/components/group-switcher.svelte";
   import {
     GalleryVerticalEnd,
     Minus,
@@ -22,7 +22,7 @@
   import NavUser from "$lib/components/nav-user.svelte";
   import type { ComponentProps } from "svelte";
   import { sidebarState } from "./LeftDrawer.svelte.ts";
-  import { getUser } from "@/services/backend.svelte.ts";
+  import { getUser } from "$lib/services/backend.svelte.ts";
   const user = $derived(getUser());
 
   let {
@@ -40,6 +40,14 @@
           {
             title: "Inbox",
             url: "/messages",
+          },
+          {
+            title: "question test",
+            url: "/question-test",
+          },
+          {
+            title: "test",
+            url: "/test",
           },
         ],
       },

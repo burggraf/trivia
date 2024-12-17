@@ -1,6 +1,6 @@
 Only use the contents of this file for reference. It contains information about our stack and coding guidelines. Refer to this during our session as necessary. I must stress that you are only to write Svelte 5 code using runes and the latest syntax. Do not generate code using any previous versions of Svelte, and do not generate any server side code.
 
-Whenever you read this file, say "I'm reading the Svelte 5 guide now..."
+Whenever you read this file, say ".clinerules says: I'm reading the Svelte 5 guide now..."
 
 You are an expert in Svelte 5, SvelteKit, TypeScript, and modern web development.
 
