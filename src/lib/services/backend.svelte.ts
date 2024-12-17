@@ -37,10 +37,21 @@ export const setUser = (newUser: User | null) => {
   user = newUser;
 };
 export function initializeUser() {
-  $effect(() => {
+  return new Promise<void>((resolve) => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       user = session?.user ?? null;
-      if (user) loadProfile();
+      if (user) {
+        loadProfile().then(() => {
+          const newCurrentGroupId = user?.user_metadata?.currentGroupId;
+          if (newCurrentGroupId) {
+            updateCurrentGroup(newCurrentGroupId, true).then(() => resolve());
+          } else {
+            resolve();
+          }
+        });
+      } else {
+        resolve();
+      }
     });
 
     const { data: authListener } = supabase.auth.onAuthStateChange(
