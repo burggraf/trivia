@@ -85,21 +85,16 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Add random order to each question
-    const questionsWithOrder = questions.map((question: any) => ({
-      ...question,
-      order: generateRandomOrder(),
-    }));
-
     // 4. Create a record in the games table
+    const questionIds = questions.map((question: any) => question.id);
     const { data: game, error: gameError } = await supabase
       .from("games")
-      .insert({ groupid, metadata: { questions: questionsWithOrder } })
+      .insert({ groupid, metadata: {}, questions: questionIds })
       .select()
       .single();
 
     if (gameError || !game) {
-      console.log("Failed to create game record");
+      console.log("Failed to create game record", gameError);
       return new Response(
         JSON.stringify({ error: "Failed to create game record" }),
         {
@@ -109,7 +104,24 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 5. Create a record in the games_users table
+    // 5. Create a record in the games_keys table
+    const keys = questions.map(() => generateRandomOrder());
+    const { error: gameKeysError } = await supabase
+      .from("games_keys")
+      .insert({ id: game.id, keys });
+
+    if (gameKeysError) {
+      console.log("Failed to create game keys record", gameKeysError);
+      return new Response(
+        JSON.stringify({ error: "Failed to create game keys record" }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 500,
+        },
+      );
+    }
+
+    // 6. Create a record in the games_users table
     const { error: gameUserError } = await supabase
       .from("games_users")
       .insert({ userid, gameid: game.id, groupid });
