@@ -241,6 +241,49 @@ $$;
 ALTER FUNCTION "public"."get_my_groups"() OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."get_random_unseen_questions"("p_user_ids" "uuid"[], "p_categories" "text"[] DEFAULT NULL::"text"[], "p_difficulties" "text"[] DEFAULT NULL::"text"[], "p_limit" integer DEFAULT 10) RETURNS TABLE("id" "uuid", "question" "text", "a" "text", "b" "text", "c" "text", "d" "text", "category" "text", "difficulty" "text")
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
+    AS $$
+BEGIN
+    RETURN QUERY
+    SELECT
+        q.id,
+        q.question,
+        q.a,
+        q.b,
+        q.c,
+        q.d,
+        q.category,
+        q.difficulty
+    FROM
+        questions q
+    WHERE
+        -- Filter by categories if provided
+(p_categories IS NULL
+            OR q.category = ANY(p_categories))
+        AND
+        -- Filter by difficulty if provided
+(p_difficulties IS NULL
+            OR q.difficulty = ANY(p_difficulties))
+        AND NOT EXISTS(
+            SELECT
+                1
+            FROM
+                users_questions uq
+            WHERE
+                uq.questionid = q.id
+                AND uq.userid = ANY(p_user_ids))
+    ORDER BY
+        random()
+    LIMIT p_limit;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."get_random_unseen_questions"("p_user_ids" "uuid"[], "p_categories" "text"[], "p_difficulties" "text"[], "p_limit" integer) OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."get_user_groupids"("p_userid" "uuid") RETURNS TABLE("groupid" "uuid")
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public', 'pg_temp'
@@ -419,6 +462,39 @@ CREATE TABLE IF NOT EXISTS "public"."duplicates" (
 ALTER TABLE "public"."duplicates" OWNER TO "postgres";
 
 
+CREATE TABLE IF NOT EXISTS "public"."games" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "groupid" "uuid" NOT NULL,
+    "metadata" "jsonb",
+    "questions" "uuid"[] NOT NULL
+);
+
+
+ALTER TABLE "public"."games" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."games_keys" (
+    "id" "uuid" NOT NULL,
+    "keys" "text"[] NOT NULL
+);
+
+
+ALTER TABLE "public"."games_keys" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."games_users" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "gameid" "uuid" NOT NULL,
+    "userid" "uuid" NOT NULL,
+    "groupid" "uuid"
+);
+
+
+ALTER TABLE "public"."games_users" OWNER TO "postgres";
+
+
 CREATE TABLE IF NOT EXISTS "public"."groups" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
@@ -559,6 +635,19 @@ CREATE TABLE IF NOT EXISTS "public"."similar_questions" (
 ALTER TABLE "public"."similar_questions" OWNER TO "postgres";
 
 
+CREATE TABLE IF NOT EXISTS "public"."users_questions" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "userid" "uuid" NOT NULL,
+    "questionid" "uuid" NOT NULL,
+    "chosen" "text",
+    "correct" numeric
+);
+
+
+ALTER TABLE "public"."users_questions" OWNER TO "postgres";
+
+
 ALTER TABLE ONLY "public"."categories"
     ADD CONSTRAINT "categories_pkey" PRIMARY KEY ("id");
 
@@ -566,6 +655,21 @@ ALTER TABLE ONLY "public"."categories"
 
 ALTER TABLE ONLY "public"."contacts"
     ADD CONSTRAINT "contacts_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."games"
+    ADD CONSTRAINT "game_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."games_keys"
+    ADD CONSTRAINT "games_keys_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."games_users"
+    ADD CONSTRAINT "games_users_pkey" PRIMARY KEY ("id");
 
 
 
@@ -606,6 +710,23 @@ ALTER TABLE ONLY "public"."questions"
 
 ALTER TABLE ONLY "public"."similar_questions"
     ADD CONSTRAINT "similar_questions_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."users_questions"
+    ADD CONSTRAINT "users_questions_pkey" PRIMARY KEY ("id");
+
+
+
+CREATE INDEX "games_groupid_idx" ON "public"."games" USING "btree" ("groupid");
+
+
+
+CREATE INDEX "games_users_gameid_idx" ON "public"."games_users" USING "btree" ("gameid");
+
+
+
+CREATE INDEX "games_users_userid_idx" ON "public"."games_users" USING "btree" ("userid");
 
 
 
@@ -658,6 +779,31 @@ ALTER TABLE ONLY "public"."contacts"
 
 
 
+ALTER TABLE ONLY "public"."games"
+    ADD CONSTRAINT "game_groupid_fkey" FOREIGN KEY ("groupid") REFERENCES "public"."groups"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."games_keys"
+    ADD CONSTRAINT "games_keys_id_fkey" FOREIGN KEY ("id") REFERENCES "public"."games"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."games_users"
+    ADD CONSTRAINT "games_users_gameid_fkey" FOREIGN KEY ("gameid") REFERENCES "public"."games"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."games_users"
+    ADD CONSTRAINT "games_users_groupid_fkey" FOREIGN KEY ("groupid") REFERENCES "public"."groups"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."games_users"
+    ADD CONSTRAINT "games_users_userid_fkey" FOREIGN KEY ("userid") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
+
+
+
 ALTER TABLE ONLY "public"."groups_invites"
     ADD CONSTRAINT "groups_invites_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
@@ -703,6 +849,16 @@ ALTER TABLE ONLY "public"."profiles"
 
 
 
+ALTER TABLE ONLY "public"."users_questions"
+    ADD CONSTRAINT "users_questions_questionid_fkey" FOREIGN KEY ("questionid") REFERENCES "public"."questions"("id");
+
+
+
+ALTER TABLE ONLY "public"."users_questions"
+    ADD CONSTRAINT "users_questions_userid_fkey" FOREIGN KEY ("userid") REFERENCES "auth"."users"("id");
+
+
+
 CREATE POLICY "Insert - user must be sender" ON "public"."messages" FOR INSERT TO "authenticated" WITH CHECK (("auth"."uid"() = "sender"));
 
 
@@ -731,6 +887,18 @@ ALTER TABLE "public"."categories" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."contacts" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."duplicates" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."games" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."games_keys" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."games_users" ENABLE ROW LEVEL SECURITY;
 
 
 CREATE POLICY "group admins can create invites" ON "public"."groups_invites" FOR INSERT TO "authenticated" WITH CHECK (((( SELECT "public"."get_group_role"("groups_invites"."groupid") AS "get_group_role") = 'Admin'::"text") AND ("created_by" = ( SELECT "auth"."uid"() AS "uid"))));
@@ -812,13 +980,26 @@ CREATE POLICY "users can view profiles from invite creators" ON "public"."profil
 
 
 
+CREATE POLICY "users can view their own games" ON "public"."games" FOR SELECT TO "authenticated" USING ((( SELECT "count"(*) AS "count"
+   FROM "public"."games_users"
+  WHERE ("games_users"."userid" = ( SELECT "auth"."uid"() AS "uid"))) > 0));
+
+
+
 CREATE POLICY "users can view their own profiles or those in their own groups" ON "public"."profiles" FOR SELECT USING ((("id" = ( SELECT "auth"."uid"() AS "uid")) OR ("id" IN ( SELECT "groups_users"."userid"
    FROM "public"."groups_users"))));
 
 
 
+CREATE POLICY "users can view their own records" ON "public"."games_users" FOR SELECT TO "authenticated" USING (("userid" = ( SELECT "auth"."uid"() AS "uid")));
+
+
+
 CREATE POLICY "users can view their own records or records for groups they bel" ON "public"."groups_users" FOR SELECT USING ((("userid" = ( SELECT "auth"."uid"() AS "uid")) OR ("groupid" IN ( SELECT "public"."get_user_groupids"("auth"."uid"()) AS "get_user_groupids"))));
 
+
+
+ALTER TABLE "public"."users_questions" ENABLE ROW LEVEL SECURITY;
 
 
 GRANT USAGE ON SCHEMA "public" TO "postgres";
@@ -863,6 +1044,12 @@ GRANT ALL ON FUNCTION "public"."get_my_groupids"() TO "service_role";
 GRANT ALL ON FUNCTION "public"."get_my_groups"() TO "anon";
 GRANT ALL ON FUNCTION "public"."get_my_groups"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_my_groups"() TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."get_random_unseen_questions"("p_user_ids" "uuid"[], "p_categories" "text"[], "p_difficulties" "text"[], "p_limit" integer) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."get_random_unseen_questions"("p_user_ids" "uuid"[], "p_categories" "text"[], "p_difficulties" "text"[], "p_limit" integer) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_random_unseen_questions"("p_user_ids" "uuid"[], "p_categories" "text"[], "p_difficulties" "text"[], "p_limit" integer) TO "service_role";
 
 
 
@@ -912,6 +1099,24 @@ GRANT ALL ON TABLE "public"."duplicates" TO "service_role";
 
 
 
+GRANT ALL ON TABLE "public"."games" TO "anon";
+GRANT ALL ON TABLE "public"."games" TO "authenticated";
+GRANT ALL ON TABLE "public"."games" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."games_keys" TO "anon";
+GRANT ALL ON TABLE "public"."games_keys" TO "authenticated";
+GRANT ALL ON TABLE "public"."games_keys" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."games_users" TO "anon";
+GRANT ALL ON TABLE "public"."games_users" TO "authenticated";
+GRANT ALL ON TABLE "public"."games_users" TO "service_role";
+
+
+
 GRANT ALL ON TABLE "public"."groups" TO "anon";
 GRANT ALL ON TABLE "public"."groups" TO "authenticated";
 GRANT ALL ON TABLE "public"."groups" TO "service_role";
@@ -957,6 +1162,12 @@ GRANT ALL ON TABLE "public"."questions" TO "service_role";
 GRANT ALL ON TABLE "public"."similar_questions" TO "anon";
 GRANT ALL ON TABLE "public"."similar_questions" TO "authenticated";
 GRANT ALL ON TABLE "public"."similar_questions" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."users_questions" TO "anon";
+GRANT ALL ON TABLE "public"."users_questions" TO "authenticated";
+GRANT ALL ON TABLE "public"."users_questions" TO "service_role";
 
 
 
