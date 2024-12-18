@@ -474,6 +474,19 @@ CREATE TABLE IF NOT EXISTS "public"."games" (
 ALTER TABLE "public"."games" OWNER TO "postgres";
 
 
+CREATE TABLE IF NOT EXISTS "public"."games_answers" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "gameid" "uuid" NOT NULL,
+    "userid" "uuid" NOT NULL,
+    "questionid" "uuid" NOT NULL,
+    "answer" "text" NOT NULL
+);
+
+
+ALTER TABLE "public"."games_answers" OWNER TO "postgres";
+
+
 CREATE TABLE IF NOT EXISTS "public"."games_keys" (
     "id" "uuid" NOT NULL,
     "keys" "text"[] NOT NULL
@@ -663,6 +676,11 @@ ALTER TABLE ONLY "public"."games"
 
 
 
+ALTER TABLE ONLY "public"."games_answers"
+    ADD CONSTRAINT "games_answers_pkey" PRIMARY KEY ("id");
+
+
+
 ALTER TABLE ONLY "public"."games_keys"
     ADD CONSTRAINT "games_keys_pkey" PRIMARY KEY ("id");
 
@@ -784,6 +802,21 @@ ALTER TABLE ONLY "public"."games"
 
 
 
+ALTER TABLE ONLY "public"."games_answers"
+    ADD CONSTRAINT "games_answers_gameid_fkey" FOREIGN KEY ("gameid") REFERENCES "public"."games"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."games_answers"
+    ADD CONSTRAINT "games_answers_questionid_fkey" FOREIGN KEY ("questionid") REFERENCES "public"."questions"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."games_answers"
+    ADD CONSTRAINT "games_answers_userid_fkey" FOREIGN KEY ("userid") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
+
+
+
 ALTER TABLE ONLY "public"."games_keys"
     ADD CONSTRAINT "games_keys_id_fkey" FOREIGN KEY ("id") REFERENCES "public"."games"("id") ON DELETE CASCADE;
 
@@ -893,6 +926,9 @@ ALTER TABLE "public"."duplicates" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."games" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."games_answers" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."games_keys" ENABLE ROW LEVEL SECURITY;
@@ -1102,6 +1138,12 @@ GRANT ALL ON TABLE "public"."duplicates" TO "service_role";
 GRANT ALL ON TABLE "public"."games" TO "anon";
 GRANT ALL ON TABLE "public"."games" TO "authenticated";
 GRANT ALL ON TABLE "public"."games" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."games_answers" TO "anon";
+GRANT ALL ON TABLE "public"."games_answers" TO "authenticated";
+GRANT ALL ON TABLE "public"."games_answers" TO "service_role";
 
 
 

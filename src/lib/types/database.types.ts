@@ -173,6 +173,55 @@ export type Database = {
           },
         ]
       }
+      games_answers: {
+        Row: {
+          answer: string
+          created_at: string
+          gameid: string
+          id: string
+          questionid: string
+          userid: string
+        }
+        Insert: {
+          answer: string
+          created_at?: string
+          gameid: string
+          id?: string
+          questionid: string
+          userid: string
+        }
+        Update: {
+          answer?: string
+          created_at?: string
+          gameid?: string
+          id?: string
+          questionid?: string
+          userid?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "games_answers_gameid_fkey"
+            columns: ["gameid"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "games_answers_questionid_fkey"
+            columns: ["questionid"]
+            isOneToOne: false
+            referencedRelation: "questions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "games_answers_userid_fkey"
+            columns: ["userid"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       games_keys: {
         Row: {
           id: string
