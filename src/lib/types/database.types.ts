@@ -141,6 +141,107 @@ export type Database = {
         }
         Relationships: []
       }
+      games: {
+        Row: {
+          created_at: string
+          groupid: string
+          id: string
+          metadata: Json | null
+          questions: string[]
+        }
+        Insert: {
+          created_at?: string
+          groupid: string
+          id?: string
+          metadata?: Json | null
+          questions: string[]
+        }
+        Update: {
+          created_at?: string
+          groupid?: string
+          id?: string
+          metadata?: Json | null
+          questions?: string[]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "game_groupid_fkey"
+            columns: ["groupid"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      games_keys: {
+        Row: {
+          id: string
+          keys: string[]
+        }
+        Insert: {
+          id: string
+          keys: string[]
+        }
+        Update: {
+          id?: string
+          keys?: string[]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "games_keys_id_fkey"
+            columns: ["id"]
+            isOneToOne: true
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      games_users: {
+        Row: {
+          created_at: string
+          gameid: string
+          groupid: string | null
+          id: string
+          userid: string
+        }
+        Insert: {
+          created_at?: string
+          gameid: string
+          groupid?: string | null
+          id?: string
+          userid: string
+        }
+        Update: {
+          created_at?: string
+          gameid?: string
+          groupid?: string | null
+          id?: string
+          userid?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "games_users_gameid_fkey"
+            columns: ["gameid"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "games_users_groupid_fkey"
+            columns: ["groupid"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "games_users_userid_fkey"
+            columns: ["userid"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       groups: {
         Row: {
           created_at: string
@@ -427,6 +528,41 @@ export type Database = {
         }
         Relationships: []
       }
+      users_questions: {
+        Row: {
+          chosen: string | null
+          correct: number | null
+          created_at: string
+          id: string
+          questionid: string
+          userid: string
+        }
+        Insert: {
+          chosen?: string | null
+          correct?: number | null
+          created_at?: string
+          id?: string
+          questionid: string
+          userid: string
+        }
+        Update: {
+          chosen?: string | null
+          correct?: number | null
+          created_at?: string
+          id?: string
+          questionid?: string
+          userid?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "users_questions_questionid_fkey"
+            columns: ["questionid"]
+            isOneToOne: false
+            referencedRelation: "questions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -484,6 +620,24 @@ export type Database = {
           created_at: string
           metadata: Json
           user_role: string
+        }[]
+      }
+      get_random_unseen_questions: {
+        Args: {
+          p_user_ids: string[]
+          p_categories?: string[]
+          p_difficulties?: string[]
+          p_limit?: number
+        }
+        Returns: {
+          id: string
+          question: string
+          a: string
+          b: string
+          c: string
+          d: string
+          category: string
+          difficulty: string
         }[]
       }
       get_user_groupids: {
