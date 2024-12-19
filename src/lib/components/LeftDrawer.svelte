@@ -18,6 +18,7 @@
     Sparkles,
     Mail,
     Users,
+    Dices,
   } from "lucide-svelte";
   import NavUser from "$lib/components/nav-user.svelte";
   import type { ComponentProps } from "svelte";
@@ -31,6 +32,18 @@
   }: ComponentProps<typeof Sidebar.Root> = $props();
   const data = {
     navMain: [
+      {
+        title: "Games",
+        url: "#",
+        icon: Dices,
+        isActive: false,
+        items: [
+          {
+            title: "Play Game",
+            url: "/game",
+          },
+        ],
+      },
       {
         title: "Messages",
         url: "#",
@@ -46,8 +59,8 @@
             url: "/question-test",
           },
           {
-            title: "test",
-            url: "/test",
+            title: "Play Game",
+            url: "/game",
           },
         ],
       },
