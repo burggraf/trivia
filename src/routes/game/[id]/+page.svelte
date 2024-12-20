@@ -29,7 +29,6 @@
 
   const gameId = $page.params.id;
   let game = $state<Game | null>(null);
-  let currentQuestionIndex = $state(0);
   let questions = $state<
     {
       id: string;
@@ -50,16 +49,12 @@
       })
       .then(async () => {
         const response = await supabase.functions.invoke("game_play", {
-          body: { gameid: gameId },
+          body: { gameid: gameId, startTime: Date.now() },
         });
         if (response.data) {
           const { data } = response.data;
           if (data?.questions) {
             questions = data.questions;
-            if (questions.length > 0) {
-              setGameMetadata(0);
-              startTimer();
-            }
           }
         }
       });
@@ -85,26 +80,6 @@
       supabase.removeChannel(channel);
     };
   });
-
-  function setGameMetadata(index: number) {
-    if (!game || !questions || questions.length === 0) return;
-    const currentQuestion = questions[index];
-    game.metadata = {
-      questions: [currentQuestion],
-    };
-  }
-
-  function startTimer() {
-    const timer = setInterval(() => {
-      currentQuestionIndex++;
-      if (currentQuestionIndex >= questions.length) {
-        clearInterval(timer);
-        console.log("Game Over");
-        return;
-      }
-      setGameMetadata(currentQuestionIndex);
-    }, 10000);
-  }
 </script>
 
 <PageTemplate>
@@ -127,7 +102,7 @@
                   game &&
                   game.metadata &&
                   game.metadata.questions[0] &&
-                  saveAnswer(game.id, game.metadata.questions[0].id, "a")}
+                  saveAnswer(game.id, game.metadata.questions[0].id, "a", 0)}
                 >A: {game?.metadata?.questions?.[0]?.answers?.a}</Button
               >
             </li>
@@ -137,7 +112,7 @@
                   game &&
                   game.metadata &&
                   game.metadata.questions[0] &&
-                  saveAnswer(game.id, game.metadata.questions[0].id, "b")}
+                  saveAnswer(game.id, game.metadata.questions[0].id, "b", 0)}
                 >B: {game?.metadata?.questions?.[0]?.answers?.b}</Button
               >
             </li>
@@ -147,7 +122,7 @@
                   game &&
                   game.metadata &&
                   game.metadata.questions[0] &&
-                  saveAnswer(game.id, game.metadata.questions[0].id, "c")}
+                  saveAnswer(game.id, game.metadata.questions[0].id, "c", 0)}
                 >C: {game?.metadata?.questions?.[0]?.answers?.c}</Button
               >
             </li>
@@ -157,7 +132,7 @@
                   game &&
                   game.metadata &&
                   game.metadata.questions[0] &&
-                  saveAnswer(game.id, game.metadata.questions[0].id, "d")}
+                  saveAnswer(game.id, game.metadata.questions[0].id, "d", 0)}
                 >D: {game?.metadata?.questions?.[0]?.answers?.d}</Button
               >
             </li>

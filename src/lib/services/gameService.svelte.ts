@@ -45,6 +45,7 @@ export const saveAnswer = async (
     gameId: string,
     questionId: string,
     answer: string,
+    questionIndex: number,
 ) => {
     if (!user) {
         console.error("User not logged in");
@@ -52,22 +53,21 @@ export const saveAnswer = async (
     }
     const userId = user.id;
     console.log(
-        "saveAnswer: userId, gameId, questionId, answer",
+        "saveAnswer: userId, gameId, questionId, answer, questionIndex",
         userId,
         gameId,
         questionId,
         answer,
+        questionIndex,
     );
     const { data, error } = await supabase
-        .from("games_answers")
-        .insert([
-            {
-                userid: userId,
-                gameid: gameId,
-                questionid: questionId,
-                answer: answer,
-            },
-        ])
+        .rpc("insert_game_answer", {
+            p_userid: userId,
+            p_gameid: gameId,
+            p_questionid: questionId,
+            p_answer: answer,
+            p_question_index: questionIndex,
+        })
         .select("*")
         .single();
 

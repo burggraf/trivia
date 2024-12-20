@@ -4,6 +4,74 @@ import { supabase } from "../_shared/supabase_client.ts";
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
+const gameTimers = new Map<
+    string,
+    {
+        currentQuestionIndex: number;
+        nextQuestionTime: number;
+        questionInterval: number;
+    }
+>();
+const QUESTION_INTERVAL = 10000; // 10 seconds
+
+function setGameTimer(gameid: string, numberOfQuestions: number) {
+    if (!gameTimers.has(gameid)) {
+        gameTimers.set(gameid, {
+            currentQuestionIndex: 0,
+            nextQuestionTime: Date.now() + QUESTION_INTERVAL,
+            questionInterval: QUESTION_INTERVAL,
+        });
+    }
+}
+
+function clearGameTimer(gameid: string) {
+    gameTimers.delete(gameid);
+}
+
+async function updateGameQuestion(
+    gameid: string,
+    currentQuestionIndex: number,
+) {
+    const { error } = await supabase
+        .from("games")
+        .update({
+            metadata: { currentQuestionIndex },
+        })
+        .eq("id", gameid);
+
+    if (error) {
+        console.error("Failed to update game metadata:", error);
+    }
+}
+
+setInterval(async () => {
+    for (const [gameid, timer] of gameTimers.entries()) {
+        if (Date.now() >= timer.nextQuestionTime) {
+            const nextIndex = timer.currentQuestionIndex + 1;
+            const { data: game, error: gameError } = await supabase
+                .from("games")
+                .select("questions")
+                .eq("id", gameid)
+                .single();
+
+            if (gameError || !game || !game.questions) {
+                console.error("Error fetching game questions:", gameError);
+                clearGameTimer(gameid);
+                continue;
+            }
+
+            if (nextIndex < game.questions.length) {
+                timer.currentQuestionIndex = nextIndex;
+                timer.nextQuestionTime = Date.now() + timer.questionInterval;
+                await updateGameQuestion(gameid, timer.currentQuestionIndex);
+            } else {
+                console.log(`Game ${gameid} over`);
+                clearGameTimer(gameid);
+            }
+        }
+    }
+}, 1000);
+
 Deno.serve(async (req) => {
     // Handle CORS preflight request
     if (req.method === "OPTIONS") {
@@ -28,10 +96,11 @@ Deno.serve(async (req) => {
         }
         const userid = user.id;
 
-        // 2. Get the gameid from the request body
-        const { gameid } = await req.json();
+        // 2. Get the gameid and startTime from the request body
+        const { gameid, startTime } = await req.json();
         console.log("gameid", gameid);
         console.log("userid", userid);
+        console.log("startTime", startTime);
 
         if (!gameid) {
             console.log("gameid is required");
@@ -67,6 +136,8 @@ Deno.serve(async (req) => {
                 },
             );
         }
+
+        setGameTimer(gameid, game.questions.length);
 
         // 4. Get the first question ID from the questions array
         const questionId = game.questions?.[0];
