@@ -17,6 +17,7 @@
     TableRow,
   } from "$lib/components/ui/table";
   import { goto } from "$app/navigation";
+  import { supabase } from "$lib/services/supabase";
 
   interface Game {
     created_at: string;
@@ -33,15 +34,47 @@
   let openGames = $state<Game[]>([]);
 
   $effect(() => {
-    if (group) {
-      getOpenGamesForGroup(group.id).then((response) => {
+    if (!group) return;
+
+    getOpenGamesForGroup(group.id)
+      .then((response) => {
         if (response?.data) {
           openGames = response.data;
         } else {
           console.error("Error fetching open games:", response?.error);
         }
+      })
+      .then(() => {
+        const channel = supabase
+          .channel("games")
+          .on(
+            "postgres_changes",
+            {
+              event: "*",
+              schema: "public",
+              table: "games",
+            },
+            (payload) => {
+              if (
+                payload.eventType === "INSERT" ||
+                payload.eventType === "UPDATE"
+              ) {
+                if (payload.new) {
+                  openGames = [...openGames, payload.new as Game];
+                }
+              } else if (payload.eventType === "DELETE") {
+                openGames = openGames.filter(
+                  (game) => game.id !== payload.old.id,
+                );
+              }
+            },
+          )
+          .subscribe();
+
+        return () => {
+          supabase.removeChannel(channel);
+        };
       });
-    }
   });
 
   const handleCreateGame = async () => {
