@@ -9,7 +9,21 @@
     created_at: string;
     groupid: string;
     id: string;
-    metadata: Json | null;
+    metadata: {
+      question: {
+        a: string;
+        b: string;
+        c: string;
+        d: string;
+      };
+      question_number: number;
+      answers: {
+        a: string;
+        b: string;
+        c: string;
+        d: string;
+      };
+    } | null;
     questions: string[];
     gamestate: string;
   }
@@ -18,9 +32,15 @@
   let game = $state<Game | null>(null);
 
   $effect(() => {
-    fetchGame(gameId).then((data) => {
-      game = data;
-    });
+    fetchGame(gameId)
+      .then((data) => {
+        game = data;
+      })
+      .then(() => {
+        supabase.functions.invoke("game_play", {
+          body: { gameid: gameId },
+        });
+      });
 
     const channel = supabase
       .channel(`game-${gameId}`)
@@ -54,6 +74,17 @@
       <h1>Game ID: {game.id}</h1>
       <p>Created At: {new Date(game.created_at).toLocaleString()}</p>
       <p>Status: {game.gamestate}</p>
+      <p>Question: {game.metadata?.question}</p>
+      <p>Question Number: {game.metadata?.question_number}</p>
+      {#if game?.metadata?.answers}
+        <p>Answers:</p>
+        <ul>
+          <li>A: {game.metadata.answers.a}</li>
+          <li>B: {game.metadata.answers.b}</li>
+          <li>C: {game.metadata.answers.c}</li>
+          <li>D: {game.metadata.answers.d}</li>
+        </ul>
+      {/if}
     {:else}
       <p>Loading game...</p>
     {/if}
