@@ -40,3 +40,39 @@ export const fetchGame = async (gameId: string) => {
     }
     return data;
 };
+
+export const saveAnswer = async (
+    gameId: string,
+    questionId: string,
+    answer: string,
+) => {
+    if (!user) {
+        console.error("User not logged in");
+        return;
+    }
+    const userId = user.id;
+    console.log(
+        "saveAnswer: userId, gameId, questionId, answer",
+        userId,
+        gameId,
+        questionId,
+        answer,
+    );
+    const { data, error } = await supabase
+        .from("games_answers")
+        .insert([
+            {
+                userid: userId,
+                gameid: gameId,
+                questionid: questionId,
+                answer: answer,
+            },
+        ])
+        .select("*")
+        .single();
+
+    if (error) {
+        console.error("Error saving answer:", error);
+    }
+    return data;
+};

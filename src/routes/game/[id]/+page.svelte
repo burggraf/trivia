@@ -4,6 +4,8 @@
   import { supabase } from "$lib/services/supabase";
   import type { Json } from "$lib/types/database.types";
   import { fetchGame } from "$lib/services/gameService.svelte";
+  import { saveAnswer } from "$lib/services/gameService.svelte";
+  import { Button } from "$lib/components/ui/button";
 
   interface Game {
     created_at: string;
@@ -11,6 +13,7 @@
     id: string;
     metadata: {
       questions: {
+        id: string;
         question: string;
         answers: {
           a: string;
@@ -29,6 +32,7 @@
   let currentQuestionIndex = $state(0);
   let questions = $state<
     {
+      id: string;
       question: string;
       answers: {
         a: string;
@@ -112,15 +116,53 @@
       <h1>Game ID: {game.id}</h1>
       <p>Created At: {new Date(game.created_at).toLocaleString()}</p>
       <p>Status: {game.gamestate}</p>
-      {#if game.metadata?.questions && game.metadata.questions.length > 0}
+      {#if game?.metadata?.questions && game.metadata.questions.length > 0}
         <p>Question: {game.metadata.questions[0].question}</p>
         <p>Answers:</p>
-        <ul>
-          <li>A: {game.metadata.questions[0].answers.a}</li>
-          <li>B: {game.metadata.questions[0].answers.b}</li>
-          <li>C: {game.metadata.questions[0].answers.c}</li>
-          <li>D: {game.metadata.questions[0].answers.d}</li>
-        </ul>
+        {#if game.metadata.questions[0]}
+          <ul>
+            <li>
+              <Button
+                onclick={() =>
+                  game &&
+                  game.metadata &&
+                  game.metadata.questions[0] &&
+                  saveAnswer(game.id, game.metadata.questions[0].id, "a")}
+                >A: {game?.metadata?.questions?.[0]?.answers?.a}</Button
+              >
+            </li>
+            <li>
+              <Button
+                onclick={() =>
+                  game &&
+                  game.metadata &&
+                  game.metadata.questions[0] &&
+                  saveAnswer(game.id, game.metadata.questions[0].id, "b")}
+                >B: {game?.metadata?.questions?.[0]?.answers?.b}</Button
+              >
+            </li>
+            <li>
+              <Button
+                onclick={() =>
+                  game &&
+                  game.metadata &&
+                  game.metadata.questions[0] &&
+                  saveAnswer(game.id, game.metadata.questions[0].id, "c")}
+                >C: {game?.metadata?.questions?.[0]?.answers?.c}</Button
+              >
+            </li>
+            <li>
+              <Button
+                onclick={() =>
+                  game &&
+                  game.metadata &&
+                  game.metadata.questions[0] &&
+                  saveAnswer(game.id, game.metadata.questions[0].id, "d")}
+                >D: {game?.metadata?.questions?.[0]?.answers?.d}</Button
+              >
+            </li>
+          </ul>
+        {/if}
       {/if}
     {:else}
       <p>Loading game...</p>

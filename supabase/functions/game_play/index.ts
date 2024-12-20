@@ -140,6 +140,7 @@ Deno.serve(async (req) => {
             ) => {
                 const key = gameKeys.keys[index] || gameKeys.keys[0];
                 return {
+                    id: question.id,
                     question: question.question,
                     answers: {
                         a: question[key[0] as "a" | "b" | "c" | "d"],
