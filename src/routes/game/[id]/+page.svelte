@@ -4,8 +4,10 @@
   import { supabase } from "$lib/services/supabase";
   import type { Json } from "$lib/types/database.types";
   import { fetchGame } from "$lib/services/gameService.svelte";
-  import { saveAnswer } from "$lib/services/gameService.svelte";
   import { Button } from "$lib/components/ui/button";
+  import { cn } from "$lib/utils";
+  import { getUser } from "$lib/services/backend.svelte";
+  const user = $derived(getUser());
 
   interface Game {
     created_at: string;
@@ -39,6 +41,8 @@
       };
     }[]
   >([]);
+  let selectedAnswer = $state<string | null>(null);
+  let correctAnswer = $state<string | null>(null);
 
   $effect(() => {
     fetchGame(gameId)
@@ -70,6 +74,16 @@
               currentQuestionIndex: payload.payload.currentQuestionIndex,
             },
           } as Game;
+          selectedAnswer = null;
+          correctAnswer = null;
+        }
+      })
+      .on("broadcast", { event: "answer_result" }, (payload) => {
+        if (payload.payload) {
+          correctAnswer = payload.payload.correctAnswer;
+          if (payload.payload.isCorrect) {
+            selectedAnswer = correctAnswer;
+          }
         }
       })
       .subscribe();
@@ -78,6 +92,27 @@
       supabase.removeChannel(channel);
     };
   });
+
+  async function saveAnswer(
+    gameId: string,
+    questionId: string,
+    answer: string,
+    currentQuestionIndex: number,
+  ) {
+    const channel = supabase.channel(gameId);
+    console.log("saveAnswer", gameId, questionId, answer, currentQuestionIndex);
+    channel.send({
+      type: "broadcast",
+      event: "answer_submitted",
+      payload: {
+        userid: user?.id,
+        questionId,
+        answer,
+        gameId,
+        currentQuestionIndex,
+      },
+    });
+  }
 </script>
 
 <PageTemplate>
@@ -96,6 +131,15 @@
           <ul>
             <li>
               <Button
+                class={cn(
+                  selectedAnswer === game.metadata.answers.a
+                    ? "bg-green-500"
+                    : "",
+                  correctAnswer === game.metadata.answers.a &&
+                    selectedAnswer !== game.metadata.answers.a
+                    ? "bg-red-500"
+                    : "",
+                )}
                 onclick={() =>
                   game &&
                   game.metadata &&
@@ -110,6 +154,15 @@
             </li>
             <li>
               <Button
+                class={cn(
+                  selectedAnswer === game.metadata.answers.b
+                    ? "bg-green-500"
+                    : "",
+                  correctAnswer === game.metadata.answers.b &&
+                    selectedAnswer !== game.metadata.answers.b
+                    ? "bg-red-500"
+                    : "",
+                )}
                 onclick={() =>
                   game &&
                   game.metadata &&
@@ -124,6 +177,15 @@
             </li>
             <li>
               <Button
+                class={cn(
+                  selectedAnswer === game.metadata.answers.c
+                    ? "bg-green-500"
+                    : "",
+                  correctAnswer === game.metadata.answers.c &&
+                    selectedAnswer !== game.metadata.answers.c
+                    ? "bg-red-500"
+                    : "",
+                )}
                 onclick={() =>
                   game &&
                   game.metadata &&
@@ -138,6 +200,15 @@
             </li>
             <li>
               <Button
+                class={cn(
+                  selectedAnswer === game.metadata.answers.d
+                    ? "bg-green-500"
+                    : "",
+                  correctAnswer === game.metadata.answers.d &&
+                    selectedAnswer !== game.metadata.answers.d
+                    ? "bg-red-500"
+                    : "",
+                )}
                 onclick={() =>
                   game &&
                   game.metadata &&
