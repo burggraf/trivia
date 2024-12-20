@@ -16,6 +16,7 @@
     TableHeader,
     TableRow,
   } from "$lib/components/ui/table";
+  import { goto } from "$app/navigation";
 
   interface Game {
     created_at: string;
@@ -78,7 +79,7 @@
         </TableHeader>
         <TableBody>
           {#each openGames as game}
-            <TableRow>
+            <TableRow onclick={() => goto(`/game/${game.id}`)}>
               <TableCell>
                 {new Date(game.created_at).toLocaleDateString()}
                 {new Date(game.created_at).toLocaleTimeString()}
