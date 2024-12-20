@@ -144,6 +144,7 @@ export type Database = {
       games: {
         Row: {
           created_at: string
+          gamestate: string | null
           groupid: string
           id: string
           metadata: Json | null
@@ -151,6 +152,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          gamestate?: string | null
           groupid: string
           id?: string
           metadata?: Json | null
@@ -158,6 +160,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          gamestate?: string | null
           groupid?: string
           id?: string
           metadata?: Json | null
