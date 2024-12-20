@@ -31,12 +31,31 @@ function clearGameTimer(gameid: string) {
 async function updateGameQuestion(
     gameid: string,
     currentQuestionIndex: number,
+    currentQuestion: any,
 ) {
+    // Fetch the current game record to get existing metadata
+    const { data: currentGame, error: fetchError } = await supabase
+        .from("games")
+        .select("metadata")
+        .eq("id", gameid)
+        .single();
+
+    if (fetchError) {
+        console.error("Failed to fetch game metadata:", fetchError);
+        return;
+    }
+
+    const updatedMetadata = {
+        ...currentGame?.metadata,
+        currentQuestionIndex,
+        question: currentQuestion.question,
+        answers: currentQuestion.answers,
+    };
+
+    // Update the game record with the new metadata
     const { error } = await supabase
         .from("games")
-        .update({
-            metadata: { currentQuestionIndex },
-        })
+        .update({ metadata: updatedMetadata })
         .eq("id", gameid);
 
     if (error) {
@@ -63,7 +82,50 @@ setInterval(async () => {
             if (nextIndex < game.questions.length) {
                 timer.currentQuestionIndex = nextIndex;
                 timer.nextQuestionTime = Date.now() + timer.questionInterval;
-                await updateGameQuestion(gameid, timer.currentQuestionIndex);
+
+                const currentQuestionId = game.questions[nextIndex];
+                const { data: questionData, error: questionError } =
+                    await supabase
+                        .from("questions")
+                        .select("a, b, c, d, question, id")
+                        .eq("id", currentQuestionId)
+                        .single();
+
+                if (questionError || !questionData) {
+                    console.error(
+                        "Error fetching question data:",
+                        questionError,
+                    );
+                    continue;
+                }
+
+                const { data: gameKeys, error: gameKeysError } = await supabase
+                    .from("games_keys")
+                    .select("keys")
+                    .eq("id", gameid)
+                    .single();
+
+                if (gameKeysError || !gameKeys) {
+                    console.log("Failed to get game keys record");
+                    continue;
+                }
+
+                const key = gameKeys.keys[nextIndex] || gameKeys.keys[0];
+                const answers = {
+                    a: questionData[key[0] as "a" | "b" | "c" | "d"],
+                    b: questionData[key[1] as "a" | "b" | "c" | "d"],
+                    c: questionData[key[2] as "a" | "b" | "c" | "d"],
+                    d: questionData[key[3] as "a" | "b" | "c" | "d"],
+                };
+
+                await updateGameQuestion(
+                    gameid,
+                    timer.currentQuestionIndex,
+                    {
+                        question: questionData.question,
+                        answers,
+                    },
+                );
             } else {
                 console.log(`Game ${gameid} over`);
                 clearGameTimer(gameid);
@@ -222,12 +284,15 @@ Deno.serve(async (req) => {
                 };
             },
         );
-        // 8. Update the game record with the questions
+        // 8. Update the game record with the first question and initial question index
+        const firstQuestion = orderedQuestions[0];
         const { error: updateError } = await supabase
             .from("games")
             .update({
                 metadata: {
-                    questions: orderedQuestions,
+                    question: firstQuestion.question,
+                    answers: firstQuestion.answers,
+                    currentQuestionIndex: 0, // Initialize currentQuestionIndex
                 },
             })
             .eq("id", gameid);

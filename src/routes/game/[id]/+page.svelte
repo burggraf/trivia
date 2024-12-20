@@ -12,16 +12,14 @@
     groupid: string;
     id: string;
     metadata: {
-      questions: {
-        id: string;
-        question: string;
-        answers: {
-          a: string;
-          b: string;
-          c: string;
-          d: string;
-        };
-      }[];
+      question: string;
+      answers: {
+        a: string;
+        b: string;
+        c: string;
+        d: string;
+      };
+      currentQuestionIndex: number;
     } | null;
     questions: string[];
     gamestate: string;
@@ -91,19 +89,23 @@
       <h1>Game ID: {game.id}</h1>
       <p>Created At: {new Date(game.created_at).toLocaleString()}</p>
       <p>Status: {game.gamestate}</p>
-      {#if game?.metadata?.questions && game.metadata.questions.length > 0}
-        <p>Question: {game.metadata.questions[0].question}</p>
+      {#if game?.metadata?.question}
+        <p>Question: {game.metadata.question}</p>
         <p>Answers:</p>
-        {#if game.metadata.questions[0]}
+        {#if game.metadata.answers}
           <ul>
             <li>
               <Button
                 onclick={() =>
                   game &&
                   game.metadata &&
-                  game.metadata.questions[0] &&
-                  saveAnswer(game.id, game.metadata.questions[0].id, "a", 0)}
-                >A: {game?.metadata?.questions?.[0]?.answers?.a}</Button
+                  questions[game.metadata.currentQuestionIndex] &&
+                  saveAnswer(
+                    game.id,
+                    questions[game.metadata.currentQuestionIndex].id,
+                    "a",
+                    game.metadata.currentQuestionIndex,
+                  )}>A: {game?.metadata?.answers?.a}</Button
               >
             </li>
             <li>
@@ -111,9 +113,13 @@
                 onclick={() =>
                   game &&
                   game.metadata &&
-                  game.metadata.questions[0] &&
-                  saveAnswer(game.id, game.metadata.questions[0].id, "b", 0)}
-                >B: {game?.metadata?.questions?.[0]?.answers?.b}</Button
+                  questions[game.metadata.currentQuestionIndex] &&
+                  saveAnswer(
+                    game.id,
+                    questions[game.metadata.currentQuestionIndex].id,
+                    "b",
+                    game.metadata.currentQuestionIndex,
+                  )}>B: {game?.metadata?.answers?.b}</Button
               >
             </li>
             <li>
@@ -121,9 +127,13 @@
                 onclick={() =>
                   game &&
                   game.metadata &&
-                  game.metadata.questions[0] &&
-                  saveAnswer(game.id, game.metadata.questions[0].id, "c", 0)}
-                >C: {game?.metadata?.questions?.[0]?.answers?.c}</Button
+                  questions[game.metadata.currentQuestionIndex] &&
+                  saveAnswer(
+                    game.id,
+                    questions[game.metadata.currentQuestionIndex].id,
+                    "c",
+                    game.metadata.currentQuestionIndex,
+                  )}>C: {game?.metadata?.answers?.c}</Button
               >
             </li>
             <li>
@@ -131,13 +141,20 @@
                 onclick={() =>
                   game &&
                   game.metadata &&
-                  game.metadata.questions[0] &&
-                  saveAnswer(game.id, game.metadata.questions[0].id, "d", 0)}
-                >D: {game?.metadata?.questions?.[0]?.answers?.d}</Button
+                  questions[game.metadata.currentQuestionIndex] &&
+                  saveAnswer(
+                    game.id,
+                    questions[game.metadata.currentQuestionIndex].id,
+                    "d",
+                    game.metadata.currentQuestionIndex,
+                  )}>D: {game?.metadata?.answers?.d}</Button
               >
             </li>
           </ul>
         {/if}
+        <p>
+          Current Question Index: {game?.metadata?.currentQuestionIndex + 1}
+        </p>
       {/if}
     {:else}
       <p>Loading game...</p>
