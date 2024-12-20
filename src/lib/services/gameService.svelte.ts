@@ -27,3 +27,16 @@ export const getOpenGamesForGroup = async (groupId: string) => {
 
     return { data, error };
 };
+
+export const fetchGame = async (gameId: string) => {
+    const { data, error } = await supabase
+        .from("games")
+        .select("*")
+        .eq("id", gameId)
+        .single();
+    if (error) {
+        console.error("Error fetching game:", error);
+        return null;
+    }
+    return data;
+};
