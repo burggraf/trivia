@@ -85,13 +85,12 @@ Deno.serve(async (req) => {
         }
 
         // 5. Get the question data from the questions table
-        const { data: question, error: questionError } = await supabase
+        const { data: questions, error: questionsError } = await supabase
             .from("questions")
-            .select("a, b, c, d, question")
-            .eq("id", questionId)
-            .single();
+            .select("a, b, c, d, question, id")
+            .in("id", game.questions);
 
-        if (questionError || !question) {
+        if (questionsError || !questions) {
             console.log("Failed to get question data");
             return new Response(
                 JSON.stringify({ error: "Failed to get question data" }),
@@ -126,29 +125,42 @@ Deno.serve(async (req) => {
             );
         }
 
-        // 7. Order the answers based on the key
-        const key = gameKeys.keys[0];
-        const answers = {
-            a: question[key[0] as "a" | "b" | "c" | "d"],
-            b: question[key[1] as "a" | "b" | "c" | "d"],
-            c: question[key[2] as "a" | "b" | "c" | "d"],
-            d: question[key[3] as "a" | "b" | "c" | "d"],
-        };
-
-        // 8. Update the game record with the question and question_number
+        // 7. Create an array of questions with ordered answers
+        const orderedQuestions = questions.map(
+            (
+                question: {
+                    a: string;
+                    b: string;
+                    c: string;
+                    d: string;
+                    question: string;
+                    id: string;
+                },
+                index: number,
+            ) => {
+                const key = gameKeys.keys[index] || gameKeys.keys[0];
+                return {
+                    question: question.question,
+                    answers: {
+                        a: question[key[0] as "a" | "b" | "c" | "d"],
+                        b: question[key[1] as "a" | "b" | "c" | "d"],
+                        c: question[key[2] as "a" | "b" | "c" | "d"],
+                        d: question[key[3] as "a" | "b" | "c" | "d"],
+                    },
+                };
+            },
+        );
+        // 8. Update the game record with the questions
         const { error: updateError } = await supabase
             .from("games")
             .update({
                 metadata: {
-                    question: question.question,
-                    question_number: 0,
-                    answers,
+                    questions: orderedQuestions,
                 },
             })
             .eq("id", gameid);
 
         if (updateError) {
-            console.log("Failed to update game record");
             return new Response(
                 JSON.stringify({ error: "Failed to update game record" }),
                 {
@@ -161,10 +173,9 @@ Deno.serve(async (req) => {
             );
         }
 
-        console.log("Game play function executed successfully");
         return new Response(
             JSON.stringify({
-                data: { message: "Game play function executed successfully" },
+                data: { questions: orderedQuestions },
             }),
             {
                 headers: { ...corsHeaders, "Content-Type": "application/json" },

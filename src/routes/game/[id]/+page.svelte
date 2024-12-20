@@ -10,19 +10,15 @@
     groupid: string;
     id: string;
     metadata: {
-      question: {
-        a: string;
-        b: string;
-        c: string;
-        d: string;
-      };
-      question_number: number;
-      answers: {
-        a: string;
-        b: string;
-        c: string;
-        d: string;
-      };
+      questions: {
+        question: string;
+        answers: {
+          a: string;
+          b: string;
+          c: string;
+          d: string;
+        };
+      }[];
     } | null;
     questions: string[];
     gamestate: string;
@@ -30,16 +26,38 @@
 
   const gameId = $page.params.id;
   let game = $state<Game | null>(null);
+  let currentQuestionIndex = $state(0);
+  let questions = $state<
+    {
+      question: string;
+      answers: {
+        a: string;
+        b: string;
+        c: string;
+        d: string;
+      };
+    }[]
+  >([]);
 
   $effect(() => {
     fetchGame(gameId)
       .then((data) => {
         game = data;
       })
-      .then(() => {
-        supabase.functions.invoke("game_play", {
+      .then(async () => {
+        const response = await supabase.functions.invoke("game_play", {
           body: { gameid: gameId },
         });
+        if (response.data) {
+          const { data } = response.data;
+          if (data?.questions) {
+            questions = data.questions;
+            if (questions.length > 0) {
+              setGameMetadata(0);
+              startTimer();
+            }
+          }
+        }
       });
 
     const channel = supabase
@@ -63,6 +81,26 @@
       supabase.removeChannel(channel);
     };
   });
+
+  function setGameMetadata(index: number) {
+    if (!game || !questions || questions.length === 0) return;
+    const currentQuestion = questions[index];
+    game.metadata = {
+      questions: [currentQuestion],
+    };
+  }
+
+  function startTimer() {
+    const timer = setInterval(() => {
+      currentQuestionIndex++;
+      if (currentQuestionIndex >= questions.length) {
+        clearInterval(timer);
+        console.log("Game Over");
+        return;
+      }
+      setGameMetadata(currentQuestionIndex);
+    }, 10000);
+  }
 </script>
 
 <PageTemplate>
@@ -74,15 +112,14 @@
       <h1>Game ID: {game.id}</h1>
       <p>Created At: {new Date(game.created_at).toLocaleString()}</p>
       <p>Status: {game.gamestate}</p>
-      <p>Question: {game.metadata?.question}</p>
-      <p>Question Number: {game.metadata?.question_number}</p>
-      {#if game?.metadata?.answers}
+      {#if game.metadata?.questions && game.metadata.questions.length > 0}
+        <p>Question: {game.metadata.questions[0].question}</p>
         <p>Answers:</p>
         <ul>
-          <li>A: {game.metadata.answers.a}</li>
-          <li>B: {game.metadata.answers.b}</li>
-          <li>C: {game.metadata.answers.c}</li>
-          <li>D: {game.metadata.answers.d}</li>
+          <li>A: {game.metadata.questions[0].answers.a}</li>
+          <li>B: {game.metadata.questions[0].answers.b}</li>
+          <li>C: {game.metadata.questions[0].answers.c}</li>
+          <li>D: {game.metadata.questions[0].answers.d}</li>
         </ul>
       {/if}
     {:else}
