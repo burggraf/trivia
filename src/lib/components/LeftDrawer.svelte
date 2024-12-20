@@ -40,7 +40,7 @@
         items: [
           {
             title: "Play Game",
-            url: "/game",
+            url: "/games",
           },
         ],
       },
@@ -60,7 +60,7 @@
           },
           {
             title: "Play Game",
-            url: "/game",
+            url: "/games",
           },
         ],
       },

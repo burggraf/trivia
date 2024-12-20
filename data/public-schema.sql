@@ -467,7 +467,8 @@ CREATE TABLE IF NOT EXISTS "public"."games" (
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "groupid" "uuid" NOT NULL,
     "metadata" "jsonb",
-    "questions" "uuid"[] NOT NULL
+    "questions" "uuid"[] NOT NULL,
+    "gamestate" "text" DEFAULT 'open'::"text"
 );
 
 
@@ -728,6 +729,11 @@ ALTER TABLE ONLY "public"."questions"
 
 ALTER TABLE ONLY "public"."similar_questions"
     ADD CONSTRAINT "similar_questions_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."games_answers"
+    ADD CONSTRAINT "unique_game_user_question" UNIQUE ("gameid", "userid", "questionid");
 
 
 
@@ -1016,9 +1022,9 @@ CREATE POLICY "users can view profiles from invite creators" ON "public"."profil
 
 
 
-CREATE POLICY "users can view their own games" ON "public"."games" FOR SELECT TO "authenticated" USING ((( SELECT "count"(*) AS "count"
-   FROM "public"."games_users"
-  WHERE ("games_users"."userid" = ( SELECT "auth"."uid"() AS "uid"))) > 0));
+CREATE POLICY "users can view their group's games" ON "public"."games" FOR SELECT TO "authenticated" USING ((( SELECT "count"(*) AS "count"
+   FROM "public"."groups_users"
+  WHERE (("groups_users"."userid" = ( SELECT "auth"."uid"() AS "uid")) AND ("groups_users"."groupid" = "games"."groupid"))) > 0));
 
 
 

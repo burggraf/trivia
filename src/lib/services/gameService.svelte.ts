@@ -2,7 +2,6 @@ import { getItemById, getList, getSession, getUser } from "./backend.svelte.ts";
 import { supabase } from "./backend.svelte.ts";
 
 import type { Database } from "$lib/types/database.types";
-import { handleServerFunctionResponse } from "$lib/utils/errorHandling";
 //export type Group = Database["public"]["Tables"]["groups"]["Insert"];
 const user = $derived(getUser());
 //import type { Group } from "$lib/types/group.ts";
@@ -17,5 +16,14 @@ export const createGame = async (groupId: string) => {
             },
         },
     );
-    return handleServerFunctionResponse(response);
+    return response;
+};
+export const getOpenGamesForGroup = async (groupId: string) => {
+    const { data, error } = await supabase
+        .from("games")
+        .select("*")
+        .eq("groupid", groupId)
+        .eq("gamestate", "open");
+
+    return { data, error };
 };
