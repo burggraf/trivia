@@ -28,41 +28,6 @@ function clearGameTimer(gameid: string) {
     gameTimers.delete(gameid);
 }
 
-async function updateGameQuestion(
-    gameid: string,
-    currentQuestionIndex: number,
-    currentQuestion: any,
-) {
-    // Fetch the current game record to get existing metadata
-    const { data: currentGame, error: fetchError } = await supabase
-        .from("games")
-        .select("metadata")
-        .eq("id", gameid)
-        .single();
-
-    if (fetchError) {
-        console.error("Failed to fetch game metadata:", fetchError);
-        return;
-    }
-
-    const updatedMetadata = {
-        ...currentGame?.metadata,
-        currentQuestionIndex,
-        question: currentQuestion.question,
-        answers: currentQuestion.answers,
-    };
-
-    // Update the game record with the new metadata
-    const { error } = await supabase
-        .from("games")
-        .update({ metadata: updatedMetadata })
-        .eq("id", gameid);
-
-    if (error) {
-        console.error("Failed to update game metadata:", error);
-    }
-}
-
 setInterval(async () => {
     for (const [gameid, timer] of gameTimers.entries()) {
         if (Date.now() >= timer.nextQuestionTime) {
@@ -118,12 +83,27 @@ setInterval(async () => {
                     d: questionData[key[3] as "a" | "b" | "c" | "d"],
                 };
 
-                await updateGameQuestion(
-                    gameid,
-                    timer.currentQuestionIndex,
-                    {
-                        question: questionData.question,
-                        answers,
+                const channel = supabase.channel(gameid);
+                channel.subscribe(
+                    async (
+                        status:
+                            | "SUBSCRIBED"
+                            | "CHANNEL_ERROR"
+                            | "TIMED_OUT"
+                            | "CLOSED",
+                    ) => {
+                        if (status === "SUBSCRIBED") {
+                            channel.send({
+                                type: "broadcast",
+                                event: "new_question",
+                                payload: {
+                                    currentQuestionIndex:
+                                        timer.currentQuestionIndex,
+                                    question: questionData.question,
+                                    answers,
+                                },
+                            });
+                        }
                     },
                 );
             } else {
@@ -198,8 +178,6 @@ Deno.serve(async (req) => {
                 },
             );
         }
-
-        setGameTimer(gameid, game.questions.length);
 
         // 4. Get the first question ID from the questions array
         const questionId = game.questions?.[0];
@@ -284,31 +262,28 @@ Deno.serve(async (req) => {
                 };
             },
         );
-        // 8. Update the game record with the first question and initial question index
-        const firstQuestion = orderedQuestions[0];
-        const { error: updateError } = await supabase
-            .from("games")
-            .update({
-                metadata: {
-                    question: firstQuestion.question,
-                    answers: firstQuestion.answers,
-                    currentQuestionIndex: 0, // Initialize currentQuestionIndex
-                },
-            })
-            .eq("id", gameid);
 
-        if (updateError) {
-            return new Response(
-                JSON.stringify({ error: "Failed to update game record" }),
-                {
-                    headers: {
-                        ...corsHeaders,
-                        "Content-Type": "application/json",
-                    },
-                    status: 500,
-                },
-            );
-        }
+        const firstQuestion = orderedQuestions[0];
+        const channel = supabase.channel(gameid);
+        channel.subscribe(
+            async (
+                status: "SUBSCRIBED" | "CHANNEL_ERROR" | "TIMED_OUT" | "CLOSED",
+            ) => {
+                if (status === "SUBSCRIBED") {
+                    channel.send({
+                        type: "broadcast",
+                        event: "new_question",
+                        payload: {
+                            currentQuestionIndex: 0,
+                            question: firstQuestion.question,
+                            answers: firstQuestion.answers,
+                        },
+                    });
+                }
+            },
+        );
+
+        setGameTimer(gameid, game.questions.length);
 
         return new Response(
             JSON.stringify({

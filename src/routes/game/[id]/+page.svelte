@@ -57,21 +57,21 @@
         }
       });
 
-    const channel = supabase
-      .channel(`game-${gameId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "games",
-        },
-        (payload) => {
-          if (payload.new) {
-            game = payload.new as Game;
-          }
-        },
-      )
+    const channel = supabase.channel(gameId);
+    channel
+      .on("broadcast", { event: "new_question" }, (payload) => {
+        if (payload.payload) {
+          game = {
+            ...game,
+            metadata: {
+              ...game?.metadata,
+              question: payload.payload.question,
+              answers: payload.payload.answers,
+              currentQuestionIndex: payload.payload.currentQuestionIndex,
+            },
+          } as Game;
+        }
+      })
       .subscribe();
 
     return () => {
