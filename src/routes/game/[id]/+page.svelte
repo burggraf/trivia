@@ -7,6 +7,7 @@
   import { Button } from "$lib/components/ui/button";
   import { cn } from "$lib/utils";
   import { getUser } from "$lib/services/backend.svelte";
+  import { saveAnswer as saveAnswerService } from "$lib/services/gameService.svelte";
   const user = $derived(getUser());
 
   interface Game {
@@ -14,35 +15,40 @@
     groupid: string;
     id: string;
     metadata: {
-      question: string;
-      answers: {
+      questions: {
         a: string;
         b: string;
         c: string;
         d: string;
-      };
-      currentQuestionIndex: number;
+        id: string;
+        category: string;
+        question: string;
+        difficulty: string;
+        correct_answer: string;
+      }[];
+      user_answers: {
+        [questionId: string]: { [userId: string]: string };
+      } | null;
     } | null;
-    questions: string[];
     gamestate: string;
   }
 
   const gameId = $page.params.id;
   let game = $state<Game | null>(null);
-  let questions = $state<
-    {
-      id: string;
-      question: string;
-      answers: {
-        a: string;
-        b: string;
-        c: string;
-        d: string;
-      };
-    }[]
-  >([]);
+  let currentQuestion = $state<{
+    a: string;
+    b: string;
+    c: string;
+    d: string;
+    id: string;
+    category: string;
+    question: string;
+    difficulty: string;
+    correct_answer: string;
+  } | null>(null);
   let selectedAnswer = $state<string | null>(null);
   let correctAnswer = $state<string | null>(null);
+  let currentQuestionIndex = $state<number>(0);
 
   $effect(() => {
     fetchGame(gameId)
@@ -50,30 +56,27 @@
         game = data;
       })
       .then(async () => {
-        const response = await supabase.functions.invoke("game_play", {
-          body: { gameid: gameId, startTime: Date.now() },
+        await supabase.functions.invoke("game_play", {
+          body: { gameid: gameId },
         });
-        if (response.data) {
-          const { data } = response.data;
-          if (data?.questions) {
-            questions = data.questions;
-          }
-        }
       });
 
     const channel = supabase.channel(gameId);
     channel
       .on("broadcast", { event: "new_question" }, (payload) => {
         if (payload.payload) {
-          game = {
-            ...game,
-            metadata: {
-              ...game?.metadata,
-              question: payload.payload.question,
-              answers: payload.payload.answers,
-              currentQuestionIndex: payload.payload.currentQuestionIndex,
-            },
-          } as Game;
+          currentQuestion = {
+            a: payload.payload.a,
+            b: payload.payload.b,
+            c: payload.payload.c,
+            d: payload.payload.d,
+            id: payload.payload.id,
+            category: payload.payload.category,
+            question: payload.payload.question,
+            difficulty: payload.payload.difficulty,
+            correct_answer: "",
+          };
+          currentQuestionIndex = payload.payload.currentQuestionIndex;
           selectedAnswer = null;
           correctAnswer = null;
         }
@@ -93,25 +96,14 @@
     };
   });
 
-  async function saveAnswer(
-    gameId: string,
-    questionId: string,
-    answer: string,
-    currentQuestionIndex: number,
-  ) {
-    const channel = supabase.channel(gameId);
-    console.log("saveAnswer", gameId, questionId, answer, currentQuestionIndex);
-    channel.send({
-      type: "broadcast",
-      event: "answer_submitted",
-      payload: {
-        userid: user?.id,
-        questionId,
-        answer,
-        gameId,
-        currentQuestionIndex,
-      },
-    });
+  async function saveAnswer(answer: string) {
+    if (!currentQuestion) return;
+    await saveAnswerService(
+      gameId,
+      currentQuestion.id,
+      answer,
+      currentQuestionIndex,
+    );
   }
 </script>
 
@@ -124,107 +116,57 @@
       <h1>Game ID: {game.id}</h1>
       <p>Created At: {new Date(game.created_at).toLocaleString()}</p>
       <p>Status: {game.gamestate}</p>
-      {#if game?.metadata?.question}
-        <p>Question: {game.metadata.question}</p>
+      {#if currentQuestion}
+        <p>Question: {currentQuestion.question}</p>
         <p>Answers:</p>
-        {#if game.metadata.answers}
-          <ul>
-            <li>
-              <Button
-                class={cn(
-                  selectedAnswer === game.metadata.answers.a
-                    ? "bg-green-500"
-                    : "",
-                  correctAnswer === game.metadata.answers.a &&
-                    selectedAnswer !== game.metadata.answers.a
-                    ? "bg-red-500"
-                    : "",
-                )}
-                onclick={() =>
-                  game &&
-                  game.metadata &&
-                  questions[game.metadata.currentQuestionIndex] &&
-                  saveAnswer(
-                    game.id,
-                    questions[game.metadata.currentQuestionIndex].id,
-                    "a",
-                    game.metadata.currentQuestionIndex,
-                  )}>A: {game?.metadata?.answers?.a}</Button
-              >
-            </li>
-            <li>
-              <Button
-                class={cn(
-                  selectedAnswer === game.metadata.answers.b
-                    ? "bg-green-500"
-                    : "",
-                  correctAnswer === game.metadata.answers.b &&
-                    selectedAnswer !== game.metadata.answers.b
-                    ? "bg-red-500"
-                    : "",
-                )}
-                onclick={() =>
-                  game &&
-                  game.metadata &&
-                  questions[game.metadata.currentQuestionIndex] &&
-                  saveAnswer(
-                    game.id,
-                    questions[game.metadata.currentQuestionIndex].id,
-                    "b",
-                    game.metadata.currentQuestionIndex,
-                  )}>B: {game?.metadata?.answers?.b}</Button
-              >
-            </li>
-            <li>
-              <Button
-                class={cn(
-                  selectedAnswer === game.metadata.answers.c
-                    ? "bg-green-500"
-                    : "",
-                  correctAnswer === game.metadata.answers.c &&
-                    selectedAnswer !== game.metadata.answers.c
-                    ? "bg-red-500"
-                    : "",
-                )}
-                onclick={() =>
-                  game &&
-                  game.metadata &&
-                  questions[game.metadata.currentQuestionIndex] &&
-                  saveAnswer(
-                    game.id,
-                    questions[game.metadata.currentQuestionIndex].id,
-                    "c",
-                    game.metadata.currentQuestionIndex,
-                  )}>C: {game?.metadata?.answers?.c}</Button
-              >
-            </li>
-            <li>
-              <Button
-                class={cn(
-                  selectedAnswer === game.metadata.answers.d
-                    ? "bg-green-500"
-                    : "",
-                  correctAnswer === game.metadata.answers.d &&
-                    selectedAnswer !== game.metadata.answers.d
-                    ? "bg-red-500"
-                    : "",
-                )}
-                onclick={() =>
-                  game &&
-                  game.metadata &&
-                  questions[game.metadata.currentQuestionIndex] &&
-                  saveAnswer(
-                    game.id,
-                    questions[game.metadata.currentQuestionIndex].id,
-                    "d",
-                    game.metadata.currentQuestionIndex,
-                  )}>D: {game?.metadata?.answers?.d}</Button
-              >
-            </li>
-          </ul>
-        {/if}
+        <ul>
+          <li>
+            <Button
+              class={cn(
+                selectedAnswer === "a" ? "bg-green-500" : "",
+                correctAnswer === "a" && selectedAnswer !== "a"
+                  ? "bg-red-500"
+                  : "",
+              )}
+              onclick={() => saveAnswer("a")}>A: {currentQuestion.a}</Button
+            >
+          </li>
+          <li>
+            <Button
+              class={cn(
+                selectedAnswer === "b" ? "bg-green-500" : "",
+                correctAnswer === "b" && selectedAnswer !== "b"
+                  ? "bg-red-500"
+                  : "",
+              )}
+              onclick={() => saveAnswer("b")}>B: {currentQuestion.b}</Button
+            >
+          </li>
+          <li>
+            <Button
+              class={cn(
+                selectedAnswer === "c" ? "bg-green-500" : "",
+                correctAnswer === "c" && selectedAnswer !== "c"
+                  ? "bg-red-500"
+                  : "",
+              )}
+              onclick={() => saveAnswer("c")}>C: {currentQuestion.c}</Button
+            >
+          </li>
+          <li>
+            <Button
+              class={cn(
+                selectedAnswer === "d" ? "bg-green-500" : "",
+                correctAnswer === "d" && selectedAnswer !== "d"
+                  ? "bg-red-500"
+                  : "",
+              )}
+              onclick={() => saveAnswer("d")}>D: {currentQuestion.d}</Button
+            >
+          </li>
+        </ul>
         <p>
-          Current Question Index: {game?.metadata?.currentQuestionIndex + 1}
+          Current Question Index: {currentQuestionIndex + 1}
         </p>
       {/if}
     {:else}

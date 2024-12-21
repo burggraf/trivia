@@ -1,6 +1,5 @@
 import { corsHeaders } from "../_shared/cors.ts";
-import { handleAnswer } from "./lib/answer-handler.ts";
-import { initializeGame } from "./lib/game-init.ts";
+import { handleGamePlay } from "./lib/game-play-handler.ts";
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
@@ -11,16 +10,10 @@ Deno.serve(async (req) => {
     }
 
     try {
-        const result = await initializeGame(req);
-        if (result instanceof Response) {
-            return result;
-        }
-        const { questions, channel, userid, gameid } = result;
-        handleAnswer(channel, gameid, userid);
-
+        await handleGamePlay(req);
         return new Response(
             JSON.stringify({
-                data: { questions },
+                data: { message: "Game play started" },
             }),
             {
                 headers: { ...corsHeaders, "Content-Type": "application/json" },
