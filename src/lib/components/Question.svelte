@@ -17,7 +17,7 @@
       <button
         class:bg-green-500={selectedAnswer === "a"}
         class:bg-red-500={correctAnswer === "a" && selectedAnswer !== "a"}
-        onclick={() => saveAnswer(question.a ?? "")}
+        onclick={() => saveAnswer("a")}
       >
         A: {question.a}
       </button>
@@ -26,7 +26,7 @@
       <button
         class:bg-green-500={selectedAnswer === "b"}
         class:bg-red-500={correctAnswer === "b" && selectedAnswer !== "b"}
-        onclick={() => saveAnswer(question.b ?? "")}
+        onclick={() => saveAnswer("b")}
       >
         B: {question.b}
       </button>
@@ -35,7 +35,7 @@
       <button
         class:bg-green-500={selectedAnswer === "c"}
         class:bg-red-500={correctAnswer === "c" && selectedAnswer !== "c"}
-        onclick={() => saveAnswer(question.c ?? "")}
+        onclick={() => saveAnswer("c")}
       >
         C: {question.c}
       </button>
@@ -44,7 +44,7 @@
       <button
         class:bg-green-500={selectedAnswer === "d"}
         class:bg-red-500={correctAnswer === "d" && selectedAnswer !== "d"}
-        onclick={() => saveAnswer(question.d ?? "")}
+        onclick={() => saveAnswer("d")}
       >
         D: {question.d}
       </button>

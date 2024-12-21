@@ -4,7 +4,6 @@
   import { supabase } from "$lib/services/supabase";
   import { fetchGame } from "$lib/services/gameService.svelte";
   import { getUser } from "$lib/services/backend.svelte";
-  import { saveAnswer as saveAnswerService } from "$lib/services/gameService.svelte";
   import type { Game } from "$lib/types/Game";
   import GameInfo from "$lib/components/GameInfo.svelte";
   import Question from "$lib/components/Question.svelte";
@@ -65,13 +64,14 @@
   });
 
   async function saveAnswer(answer: string) {
+    console.log("saveAnswer", answer);
     if (!currentQuestion) return;
-    await saveAnswerService(
-      gameId,
-      currentQuestion.id,
-      answer,
-      currentQuestionIndex,
-    );
+    const channel = supabase.channel(gameId);
+    channel.send({
+      type: "broadcast",
+      event: "answer_submitted",
+      payload: { questionId: currentQuestion.id, answer },
+    });
   }
 </script>
 
