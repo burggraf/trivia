@@ -2,50 +2,18 @@
   import PageTemplate from "$lib/components/PageTemplate.svelte";
   import { page } from "$app/stores";
   import { supabase } from "$lib/services/supabase";
-  import type { Json } from "$lib/types/database.types";
   import { fetchGame } from "$lib/services/gameService.svelte";
-  import { Button } from "$lib/components/ui/button";
-  import { cn } from "$lib/utils";
   import { getUser } from "$lib/services/backend.svelte";
   import { saveAnswer as saveAnswerService } from "$lib/services/gameService.svelte";
+  import type { Game } from "$lib/types/Game";
+  import GameInfo from "$lib/components/GameInfo.svelte";
+  import Question from "$lib/components/Question.svelte";
+  import type { Question as QuestionType } from "$lib/types/Question";
   const user = $derived(getUser());
-
-  interface Game {
-    created_at: string;
-    groupid: string;
-    id: string;
-    metadata: {
-      questions: {
-        a: string;
-        b: string;
-        c: string;
-        d: string;
-        id: string;
-        category: string;
-        question: string;
-        difficulty: string;
-        correct_answer: string;
-      }[];
-      user_answers: {
-        [questionId: string]: { [userId: string]: string };
-      } | null;
-    } | null;
-    gamestate: string;
-  }
 
   const gameId = $page.params.id;
   let game = $state<Game | null>(null);
-  let currentQuestion = $state<{
-    a: string;
-    b: string;
-    c: string;
-    d: string;
-    id: string;
-    category: string;
-    question: string;
-    difficulty: string;
-    correct_answer: string;
-  } | null>(null);
+  let currentQuestion = $state<QuestionType | null>(null);
   let selectedAnswer = $state<string | null>(null);
   let correctAnswer = $state<string | null>(null);
   let currentQuestionIndex = $state<number>(0);
@@ -113,58 +81,14 @@
   {/snippet}
   {#snippet Middle()}
     {#if game}
-      <h1>Game ID: {game.id}</h1>
-      <p>Created At: {new Date(game.created_at).toLocaleString()}</p>
-      <p>Status: {game.gamestate}</p>
+      <GameInfo {game} />
       {#if currentQuestion}
-        <p>Question: {currentQuestion.question}</p>
-        <p>Answers:</p>
-        <ul>
-          <li>
-            <Button
-              class={cn(
-                selectedAnswer === "a" ? "bg-green-500" : "",
-                correctAnswer === "a" && selectedAnswer !== "a"
-                  ? "bg-red-500"
-                  : "",
-              )}
-              onclick={() => saveAnswer("a")}>A: {currentQuestion.a}</Button
-            >
-          </li>
-          <li>
-            <Button
-              class={cn(
-                selectedAnswer === "b" ? "bg-green-500" : "",
-                correctAnswer === "b" && selectedAnswer !== "b"
-                  ? "bg-red-500"
-                  : "",
-              )}
-              onclick={() => saveAnswer("b")}>B: {currentQuestion.b}</Button
-            >
-          </li>
-          <li>
-            <Button
-              class={cn(
-                selectedAnswer === "c" ? "bg-green-500" : "",
-                correctAnswer === "c" && selectedAnswer !== "c"
-                  ? "bg-red-500"
-                  : "",
-              )}
-              onclick={() => saveAnswer("c")}>C: {currentQuestion.c}</Button
-            >
-          </li>
-          <li>
-            <Button
-              class={cn(
-                selectedAnswer === "d" ? "bg-green-500" : "",
-                correctAnswer === "d" && selectedAnswer !== "d"
-                  ? "bg-red-500"
-                  : "",
-              )}
-              onclick={() => saveAnswer("d")}>D: {currentQuestion.d}</Button
-            >
-          </li>
-        </ul>
+        <Question
+          question={currentQuestion}
+          {selectedAnswer}
+          {correctAnswer}
+          {saveAnswer}
+        />
         <p>
           Current Question Index: {currentQuestionIndex + 1}
         </p>
