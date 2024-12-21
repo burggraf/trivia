@@ -86,10 +86,41 @@ Deno.serve(async (req) => {
     }
 
     // 4. Create a record in the games table
-    const questionIds = questions.map((question: any) => question.id);
+    const modifiedQuestions = questions.map((question: any) => {
+      const letters = ["a", "b", "c", "d"];
+      // Shuffle the letters
+      for (let i = letters.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [letters[i], letters[j]] = [letters[j], letters[i]];
+      }
+
+      const shuffledKeys = {
+        a: letters[0],
+        b: letters[1],
+        c: letters[2],
+        d: letters[3],
+      };
+
+      const originalKeys = ["a", "b", "c", "d"];
+      const modifiedQuestion = {
+        ...question,
+        a: question[shuffledKeys.a],
+        b: question[shuffledKeys.b],
+        c: question[shuffledKeys.c],
+        d: question[shuffledKeys.d],
+        correct_answer: originalKeys[letters.indexOf("a")],
+      };
+
+      return modifiedQuestion;
+    });
     const { data: game, error: gameError } = await supabase
       .from("games")
-      .insert({ groupid, metadata: {}, questions: questionIds })
+      .insert({
+        groupid,
+        metadata: {
+          questions: modifiedQuestions,
+        },
+      })
       .select()
       .single();
 
@@ -97,23 +128,6 @@ Deno.serve(async (req) => {
       console.log("Failed to create game record", gameError);
       return new Response(
         JSON.stringify({ error: "Failed to create game record" }),
-        {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 500,
-        },
-      );
-    }
-
-    // 5. Create a record in the games_keys table
-    const keys = questions.map(() => generateRandomOrder());
-    const { error: gameKeysError } = await supabase
-      .from("games_keys")
-      .insert({ id: game.id, keys });
-
-    if (gameKeysError) {
-      console.log("Failed to create game keys record", gameKeysError);
-      return new Response(
-        JSON.stringify({ error: "Failed to create game keys record" }),
         {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
           status: 500,
