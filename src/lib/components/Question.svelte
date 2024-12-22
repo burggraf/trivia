@@ -1,5 +1,7 @@
 <script lang="ts">
   import type { Question } from "$lib/types/Question";
+  import * as Card from "$lib/components/ui/card";
+  import { Button } from "$lib/components/ui/button";
 
   let { question, selectedAnswer, correctAnswer, saveAnswer, isCorrect } =
     $props<{
@@ -14,59 +16,81 @@
   let localSelectedAnswer = $derived(selectedAnswer);
 </script>
 
-<div>
-  <p>Question: {question.question}</p>
-  <p>Answers:</p>
-  <ul>
-    <li>
-      <button
-        class:bg-green-500={isCorrect === true && localSelectedAnswer === "a"}
-        class:bg-red-500={isCorrect === false &&
-          localSelectedAnswer === "a" &&
-          localSelectedAnswer !== correctAnswer}
-        class:bg-gray-200={isCorrect === false && correctAnswer === "a"}
+<Card.Root class="w-full">
+  <Card.Header>
+    <Card.Title>Question</Card.Title>
+  </Card.Header>
+  <Card.Content>
+    <p>{question.question}</p>
+    <div class="mt-4 grid grid-cols-2 gap-4">
+      <Button
+        variant="outline"
+        class={`${
+          isCorrect === true && localSelectedAnswer === "a"
+            ? "border-green-500 border-2"
+            : isCorrect === false &&
+                localSelectedAnswer === "a" &&
+                localSelectedAnswer !== correctAnswer
+              ? "border-red-500 border-2"
+              : isCorrect === false && correctAnswer === "a"
+                ? "border-black border-2"
+                : "border-2"
+        }`}
         onclick={() => saveAnswer("a")}
       >
         A: {question.a}
-      </button>
-    </li>
-    <li>
-      <button
-        class:bg-green-500={isCorrect === true && localSelectedAnswer === "b"}
-        class:bg-red-500={isCorrect === false &&
-          localSelectedAnswer === "b" &&
-          localSelectedAnswer !== correctAnswer}
-        class:bg-gray-200={isCorrect === false && correctAnswer === "b"}
+      </Button>
+      <Button
+        variant="outline"
+        class={`${
+          isCorrect === true && localSelectedAnswer === "b"
+            ? "border-green-500 border-2"
+            : isCorrect === false &&
+                localSelectedAnswer === "b" &&
+                localSelectedAnswer !== correctAnswer
+              ? "border-red-500 border-2"
+              : isCorrect === false && correctAnswer === "b"
+                ? "border-black border-2"
+                : "border-2"
+        }`}
         onclick={() => saveAnswer("b")}
       >
         B: {question.b}
-      </button>
-    </li>
-    <li>
-      <button
-        class:bg-green-500={isCorrect === true && localSelectedAnswer === "c"}
-        class:bg-red-500={isCorrect === false &&
-          localSelectedAnswer === "c" &&
-          localSelectedAnswer !== correctAnswer}
-        class:bg-gray-200={isCorrect === false && correctAnswer === "c"}
+      </Button>
+      <Button
+        variant="outline"
+        class={`${
+          isCorrect === true && localSelectedAnswer === "c"
+            ? "border-green-500 border-2"
+            : isCorrect === false &&
+                localSelectedAnswer === "c" &&
+                localSelectedAnswer !== correctAnswer
+              ? "border-red-500 border-2"
+              : isCorrect === false && correctAnswer === "c"
+                ? "border-black border-2"
+                : "border-2"
+        }`}
         onclick={() => saveAnswer("c")}
       >
         C: {question.c}
-      </button>
-    </li>
-    <li>
-      <button
-        class:bg-green-500={isCorrect === true && localSelectedAnswer === "d"}
-        class:bg-red-500={isCorrect === false &&
-          localSelectedAnswer === "d" &&
-          localSelectedAnswer !== correctAnswer}
-        class:bg-gray-200={isCorrect === false && correctAnswer === "d"}
+      </Button>
+      <Button
+        variant="outline"
+        class={`${
+          isCorrect === true && localSelectedAnswer === "d"
+            ? "border-green-500 border-2"
+            : isCorrect === false &&
+                localSelectedAnswer === "d" &&
+                localSelectedAnswer !== correctAnswer
+              ? "border-red-500 border-2"
+              : isCorrect === false && correctAnswer === "d"
+                ? "border-black border-2"
+                : "border-2"
+        }`}
         onclick={() => saveAnswer("d")}
       >
         D: {question.d}
-      </button>
-    </li>
-  </ul>
-</div>
-isCorrect: {isCorrect}<br />
-selectedAnswer: {selectedAnswer}<br />
+      </Button>
+    </div>
+  </Card.Content>
+</Card.Root>

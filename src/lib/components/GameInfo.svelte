@@ -5,7 +5,5 @@
 </script>
 
 <div>
-  <h1>Game ID: {game.id}</h1>
-  <p>Created At: {new Date(game.created_at).toLocaleString()}</p>
   <p>Status: {game.gamestate}</p>
 </div>
