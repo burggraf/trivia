@@ -16,6 +16,7 @@
   let selectedAnswer = $state<string | null>(null);
   let correctAnswer = $state<string | null>(null);
   let currentQuestionIndex = $state<number>(0);
+  let isCorrect = $state<boolean | null>(null);
 
   $effect(() => {
     fetchGame(gameId)
@@ -31,6 +32,7 @@
     const channel = supabase.channel(gameId);
     channel
       .on("broadcast", { event: "new_question" }, (payload) => {
+        console.log("new_question", payload);
         if (payload.payload) {
           currentQuestion = {
             a: payload.payload.a,
@@ -44,15 +46,19 @@
             correct_answer: "",
           };
           currentQuestionIndex = payload.payload.currentQuestionIndex;
-          selectedAnswer = null;
           correctAnswer = null;
+          selectedAnswer = null;
         }
       })
       .on("broadcast", { event: "answer_result" }, (payload) => {
+        console.log("answer_result", payload);
         if (payload.payload) {
           correctAnswer = payload.payload.correctAnswer;
+          isCorrect = payload.payload.isCorrect;
           if (payload.payload.isCorrect) {
             selectedAnswer = correctAnswer;
+          } else if (payload.payload.answer) {
+            selectedAnswer = payload.payload.answer;
           }
         }
       })
@@ -65,6 +71,7 @@
 
   async function saveAnswer(answer: string) {
     console.log("saveAnswer", answer);
+    selectedAnswer = answer; // Update selectedAnswer immediately
     if (!currentQuestion) return;
     const channel = supabase.channel(gameId);
     channel.send({
@@ -87,6 +94,7 @@
           question={currentQuestion}
           {selectedAnswer}
           {correctAnswer}
+          {isCorrect}
           {saveAnswer}
         />
         <p>

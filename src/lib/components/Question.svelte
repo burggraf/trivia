@@ -1,12 +1,17 @@
 <script lang="ts">
   import type { Question } from "$lib/types/Question";
 
-  let { question, selectedAnswer, correctAnswer, saveAnswer } = $props<{
-    question: Question;
-    selectedAnswer: string | null;
-    correctAnswer: string | null;
-    saveAnswer: (answer: string) => Promise<void>;
-  }>();
+  let { question, selectedAnswer, correctAnswer, saveAnswer, isCorrect } =
+    $props<{
+      question: Question;
+      selectedAnswer: string | null;
+      correctAnswer: string | null;
+      isCorrect: boolean | null;
+      saveAnswer: (answer: string) => Promise<void>;
+    }>();
+
+  console.log("selectedAnswer in Question component:", selectedAnswer);
+  let localSelectedAnswer = $derived(selectedAnswer);
 </script>
 
 <div>
@@ -15,8 +20,11 @@
   <ul>
     <li>
       <button
-        class:bg-green-500={selectedAnswer === "a"}
-        class:bg-red-500={correctAnswer === "a" && selectedAnswer !== "a"}
+        class:bg-green-500={isCorrect === true && localSelectedAnswer === "a"}
+        class:bg-red-500={isCorrect === false &&
+          localSelectedAnswer === "a" &&
+          localSelectedAnswer !== correctAnswer}
+        class:bg-gray-200={isCorrect === false && correctAnswer === "a"}
         onclick={() => saveAnswer("a")}
       >
         A: {question.a}
@@ -24,8 +32,11 @@
     </li>
     <li>
       <button
-        class:bg-green-500={selectedAnswer === "b"}
-        class:bg-red-500={correctAnswer === "b" && selectedAnswer !== "b"}
+        class:bg-green-500={isCorrect === true && localSelectedAnswer === "b"}
+        class:bg-red-500={isCorrect === false &&
+          localSelectedAnswer === "b" &&
+          localSelectedAnswer !== correctAnswer}
+        class:bg-gray-200={isCorrect === false && correctAnswer === "b"}
         onclick={() => saveAnswer("b")}
       >
         B: {question.b}
@@ -33,8 +44,11 @@
     </li>
     <li>
       <button
-        class:bg-green-500={selectedAnswer === "c"}
-        class:bg-red-500={correctAnswer === "c" && selectedAnswer !== "c"}
+        class:bg-green-500={isCorrect === true && localSelectedAnswer === "c"}
+        class:bg-red-500={isCorrect === false &&
+          localSelectedAnswer === "c" &&
+          localSelectedAnswer !== correctAnswer}
+        class:bg-gray-200={isCorrect === false && correctAnswer === "c"}
         onclick={() => saveAnswer("c")}
       >
         C: {question.c}
@@ -42,8 +56,11 @@
     </li>
     <li>
       <button
-        class:bg-green-500={selectedAnswer === "d"}
-        class:bg-red-500={correctAnswer === "d" && selectedAnswer !== "d"}
+        class:bg-green-500={isCorrect === true && localSelectedAnswer === "d"}
+        class:bg-red-500={isCorrect === false &&
+          localSelectedAnswer === "d" &&
+          localSelectedAnswer !== correctAnswer}
+        class:bg-gray-200={isCorrect === false && correctAnswer === "d"}
         onclick={() => saveAnswer("d")}
       >
         D: {question.d}
@@ -51,3 +68,5 @@
     </li>
   </ul>
 </div>
+isCorrect: {isCorrect}<br />
+selectedAnswer: {selectedAnswer}<br />

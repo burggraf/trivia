@@ -113,6 +113,18 @@ export async function handleGamePlay(req: Request) {
                     userAnswers[questionId] = {};
                 }
                 userAnswers[questionId][userid] = answer;
+
+                channel.send({
+                    type: "broadcast",
+                    event: "answer_result",
+                    payload: {
+                        correctAnswer:
+                            questions[currentQuestionIndex].correct_answer,
+                        isCorrect:
+                            questions[currentQuestionIndex].correct_answer ===
+                                answer,
+                    },
+                });
             }
         },
     );
