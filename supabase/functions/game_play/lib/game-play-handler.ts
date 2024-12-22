@@ -175,13 +175,30 @@ export async function handleGamePlay(req: Request) {
 
     const broadcastNextQuestion = async () => {
         if (currentQuestionIndex < questions.length - 1) {
-            currentQuestionIndex++;
-            await new Promise((resolve) => setTimeout(resolve, 10000));
-            broadcastQuestion(
-                channel,
-                questions[currentQuestionIndex],
-                currentQuestionIndex,
+            const allUsersAnswered = Object.keys(users).every(
+                (userId) =>
+                    users[userId].answers.some(
+                        (answer) =>
+                            answer.questionIndex === currentQuestionIndex,
+                    ),
             );
+
+            if (allUsersAnswered) {
+                currentQuestionIndex++;
+                broadcastQuestion(
+                    channel,
+                    questions[currentQuestionIndex],
+                    currentQuestionIndex,
+                );
+            } else {
+                currentQuestionIndex++;
+                await new Promise((resolve) => setTimeout(resolve, 10000));
+                broadcastQuestion(
+                    channel,
+                    questions[currentQuestionIndex],
+                    currentQuestionIndex,
+                );
+            }
         } else {
             // Game over
             await new Promise((resolve) => setTimeout(resolve, 10000));

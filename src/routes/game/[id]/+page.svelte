@@ -17,6 +17,7 @@
   let correctAnswer = $state<string | null>(null);
   let currentQuestionIndex = $state<number>(0);
   let isCorrect = $state<boolean | null>(null);
+  let countdown = $state(30);
 
   $effect(() => {
     fetchGame(gameId)
@@ -48,6 +49,7 @@
           currentQuestionIndex = payload.payload.currentQuestionIndex;
           correctAnswer = null;
           selectedAnswer = null;
+          countdown = 30;
         }
       })
       .on("broadcast", { event: "answer_result" }, (payload) => {
@@ -72,6 +74,15 @@
     };
   });
 
+  $effect(() => {
+    if (countdown > 0) {
+      const interval = setInterval(() => {
+        countdown--;
+      }, 1000);
+      return () => clearInterval(interval);
+    }
+  });
+
   async function saveAnswer(answer: string) {
     console.log("saveAnswer", answer);
     selectedAnswer = answer; // Update selectedAnswer immediately
@@ -93,6 +104,7 @@
     {#if game}
       <GameInfo {game} />
       {#if currentQuestion}
+        <p>Time remaining: {countdown}</p>
         <Question
           question={currentQuestion}
           {selectedAnswer}
