@@ -50,6 +50,7 @@ export const setupGameChannel = async (
                     questions[currentQuestionIndex],
                     currentQuestionIndex,
                 );
+                startQuestionTimer(currentQuestionIndex);
             }
         },
     );
@@ -122,8 +123,31 @@ export const setupGameChannel = async (
         },
     );
 
-    const broadcastNextQuestion = async () => {
-        if (currentQuestionIndex < questions.length - 1) {
+    const startQuestionTimer = (currentQuestionIndex: number) => {
+        let timerId: number | null = null;
+        const questionTimeout = 30000;
+        const delayBeforeNextQuestion = 5000;
+
+        timerId = setTimeout(async () => {
+            timerId = null;
+            // Broadcast the correct answer
+            channel.send({
+                type: "broadcast",
+                event: "answer_result",
+                payload: {
+                    correctAnswer:
+                        questions[currentQuestionIndex].correct_answer,
+                    isCorrect: false,
+                },
+            });
+
+            await new Promise((resolve) =>
+                setTimeout(resolve, delayBeforeNextQuestion)
+            );
+            await broadcastNextQuestion();
+        }, questionTimeout);
+
+        const checkAllUsersAnswered = async () => {
             const allUsersAnswered = Object.keys(users).every(
                 (userId) =>
                     users[userId].answers.some(
@@ -133,21 +157,31 @@ export const setupGameChannel = async (
             );
 
             if (allUsersAnswered) {
-                currentQuestionIndex++;
-                broadcastQuestion(
-                    channel,
-                    questions[currentQuestionIndex],
-                    currentQuestionIndex,
+                if (timerId) {
+                    clearTimeout(timerId);
+                    timerId = null;
+                }
+                await new Promise((resolve) =>
+                    setTimeout(resolve, delayBeforeNextQuestion)
                 );
+                await broadcastNextQuestion();
             } else {
-                currentQuestionIndex++;
-                await new Promise((resolve) => setTimeout(resolve, 10000));
-                broadcastQuestion(
-                    channel,
-                    questions[currentQuestionIndex],
-                    currentQuestionIndex,
-                );
+                // Check again after a short delay
+                setTimeout(checkAllUsersAnswered, 1000);
             }
+        };
+        checkAllUsersAnswered();
+    };
+
+    const broadcastNextQuestion = async () => {
+        if (currentQuestionIndex < questions.length - 1) {
+            currentQuestionIndex++;
+            broadcastQuestion(
+                channel,
+                questions[currentQuestionIndex],
+                currentQuestionIndex,
+            );
+            startQuestionTimer(currentQuestionIndex);
         } else {
             // Game over
             await new Promise((resolve) => setTimeout(resolve, 10000));
@@ -171,6 +205,4 @@ export const setupGameChannel = async (
             channel.unsubscribe();
         }
     };
-
-    setTimeout(broadcastNextQuestion, 10000);
 };
