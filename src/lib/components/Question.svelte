@@ -3,14 +3,21 @@
   import * as Card from "$lib/components/ui/card";
   import { Button } from "$lib/components/ui/button";
 
-  let { question, selectedAnswer, correctAnswer, saveAnswer, isCorrect } =
-    $props<{
-      question: Question;
-      selectedAnswer: string | null;
-      correctAnswer: string | null;
-      isCorrect: boolean | null;
-      saveAnswer: (answer: string) => Promise<void>;
-    }>();
+  let {
+    question,
+    selectedAnswer,
+    correctAnswer,
+    saveAnswer,
+    isCorrect,
+    currentQuestionIndex,
+  } = $props<{
+    question: Question;
+    selectedAnswer: string | null;
+    correctAnswer: string | null;
+    isCorrect: boolean | null;
+    saveAnswer: (answer: string) => Promise<void>;
+    currentQuestionIndex: number;
+  }>();
 
   console.log("selectedAnswer in Question component:", selectedAnswer);
   let localSelectedAnswer = $derived(selectedAnswer);
@@ -18,7 +25,7 @@
 
 <Card.Root class="w-full">
   <Card.Header>
-    <Card.Title>Question</Card.Title>
+    <Card.Title>Question {currentQuestionIndex + 1}</Card.Title>
   </Card.Header>
   <Card.Content>
     <p>{question.question}</p>

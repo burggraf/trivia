@@ -96,10 +96,8 @@
           {correctAnswer}
           {isCorrect}
           {saveAnswer}
+          {currentQuestionIndex}
         />
-        <p>
-          Current Question Index: {currentQuestionIndex + 1}
-        </p>
       {/if}
     {:else}
       <p>Loading game...</p>
