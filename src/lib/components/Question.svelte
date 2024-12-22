@@ -1,7 +1,6 @@
 <script lang="ts">
   import type { Question } from "$lib/types/Question";
   import * as Card from "$lib/components/ui/card";
-  import { Button } from "$lib/components/ui/button";
 
   let {
     question,
@@ -42,7 +41,12 @@
                 ? "border-black border-2"
                 : "border-2"
         }`}
+        role="button"
+        tabindex="0"
         onclick={() => saveAnswer("a")}
+        onkeydown={(e) => {
+          if (e.key === "Enter" || e.key === " ") saveAnswer("a");
+        }}
       >
         A: {question.a}
       </div>
@@ -58,7 +62,12 @@
                 ? "border-black border-2"
                 : "border-2"
         }`}
+        role="button"
+        tabindex="0"
         onclick={() => saveAnswer("b")}
+        onkeydown={(e) => {
+          if (e.key === "Enter" || e.key === " ") saveAnswer("b");
+        }}
       >
         B: {question.b}
       </div>
@@ -74,7 +83,12 @@
                 ? "border-black border-2"
                 : "border-2"
         }`}
+        role="button"
+        tabindex="0"
         onclick={() => saveAnswer("c")}
+        onkeydown={(e) => {
+          if (e.key === "Enter" || e.key === " ") saveAnswer("c");
+        }}
       >
         C: {question.c}
       </div>
@@ -90,7 +104,12 @@
                 ? "border-black border-2"
                 : "border-2"
         }`}
+        role="button"
+        tabindex="0"
         onclick={() => saveAnswer("d")}
+        onkeydown={(e) => {
+          if (e.key === "Enter" || e.key === " ") saveAnswer("d");
+        }}
       >
         D: {question.d}
       </div>
