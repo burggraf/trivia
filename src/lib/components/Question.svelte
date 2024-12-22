@@ -29,10 +29,9 @@
   </Card.Header>
   <Card.Content>
     <p>{question.question}</p>
-    <div class="mt-4 grid grid-cols-2 gap-4">
-      <Button
-        variant="outline"
-        class={`${
+    <div class="mt-4 grid gap-4">
+      <div
+        class={`whitespace-normal min-h-[4rem] rounded-md p-4 ${
           isCorrect === true && localSelectedAnswer === "a"
             ? "border-green-500 border-2"
             : isCorrect === false &&
@@ -46,10 +45,9 @@
         onclick={() => saveAnswer("a")}
       >
         A: {question.a}
-      </Button>
-      <Button
-        variant="outline"
-        class={`${
+      </div>
+      <div
+        class={`whitespace-normal min-h-[4rem] rounded-md p-4 ${
           isCorrect === true && localSelectedAnswer === "b"
             ? "border-green-500 border-2"
             : isCorrect === false &&
@@ -63,10 +61,9 @@
         onclick={() => saveAnswer("b")}
       >
         B: {question.b}
-      </Button>
-      <Button
-        variant="outline"
-        class={`${
+      </div>
+      <div
+        class={`whitespace-normal min-h-[4rem] rounded-md p-4 ${
           isCorrect === true && localSelectedAnswer === "c"
             ? "border-green-500 border-2"
             : isCorrect === false &&
@@ -80,10 +77,9 @@
         onclick={() => saveAnswer("c")}
       >
         C: {question.c}
-      </Button>
-      <Button
-        variant="outline"
-        class={`${
+      </div>
+      <div
+        class={`whitespace-normal min-h-[4rem] rounded-md p-4 ${
           isCorrect === true && localSelectedAnswer === "d"
             ? "border-green-500 border-2"
             : isCorrect === false &&
@@ -97,7 +93,7 @@
         onclick={() => saveAnswer("d")}
       >
         D: {question.d}
-      </Button>
+      </div>
     </div>
   </Card.Content>
 </Card.Root>
