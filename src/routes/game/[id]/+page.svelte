@@ -62,6 +62,9 @@
           }
         }
       })
+      .on("broadcast", { event: "users_update" }, (payload) => {
+        console.log("users_update", payload);
+      })
       .subscribe();
 
     return () => {

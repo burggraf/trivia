@@ -8,7 +8,7 @@ const gameTimers = new Map<
         questionInterval: number;
     }
 >();
-const QUESTION_INTERVAL = 10000; // 10 seconds
+const QUESTION_INTERVAL = 30000; // 30 seconds
 
 export function setGameTimer(gameid: string, numberOfQuestions: number) {
     if (!gameTimers.has(gameid)) {

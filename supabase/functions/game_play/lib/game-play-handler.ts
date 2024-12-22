@@ -60,6 +60,16 @@ export async function handleGamePlay(req: Request) {
 
     const channel = supabase.channel(gameid);
     let currentQuestionIndex = 0;
+    const users: {
+        [userId: string]: {
+            user: any;
+            answers: {
+                questionIndex: number;
+                answer: string;
+                isCorrect: boolean;
+            }[];
+        };
+    } = {};
     const userAnswers: { [questionId: string]: { [userId: string]: string } } =
         {};
 
@@ -68,6 +78,23 @@ export async function handleGamePlay(req: Request) {
             status: "SUBSCRIBED" | "CHANNEL_ERROR" | "TIMED_OUT" | "CLOSED",
         ) => {
             if (status === "SUBSCRIBED") {
+                // Initialize user in users object
+                const { data: profile, error: profileError } = await supabase
+                    .from("profiles")
+                    .select("firstname, lastname")
+                    .eq("id", userid)
+                    .single();
+
+                if (profileError) {
+                    console.error("Error fetching profile:", profileError);
+                    users[userid] = { user, answers: [] };
+                } else {
+                    users[userid] = {
+                        user: { ...user, ...profile },
+                        answers: [],
+                    };
+                }
+
                 // Broadcast the first question
                 broadcastQuestion(
                     channel,
@@ -112,7 +139,24 @@ export async function handleGamePlay(req: Request) {
                 if (!userAnswers[questionId]) {
                     userAnswers[questionId] = {};
                 }
+                const isCorrect =
+                    questions[currentQuestionIndex].correct_answer === answer;
+
+                // Update user's answers
+                users[userid].answers.push({
+                    questionIndex: currentQuestionIndex,
+                    answer,
+                    isCorrect,
+                });
+
                 userAnswers[questionId][userid] = answer;
+
+                // Broadcast the users object
+                channel.send({
+                    type: "broadcast",
+                    event: "users_update",
+                    payload: { users },
+                });
 
                 channel.send({
                     type: "broadcast",
