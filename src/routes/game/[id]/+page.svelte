@@ -31,7 +31,30 @@
       });
 
     const channel = supabase.channel(gameId);
+
+    const userStatus = {
+      user: user?.id,
+      online_at: new Date().toISOString(),
+    };
+    channel.subscribe(async (status) => {
+      if (status !== "SUBSCRIBED") {
+        return;
+      }
+      const presenceTrackStatus = await channel.track(userStatus);
+      console.log(presenceTrackStatus);
+    });
+
     channel
+      .on("presence", { event: "sync" }, () => {
+        const newState = channel.presenceState();
+        console.log("sync", newState);
+      })
+      .on("presence", { event: "join" }, ({ key, newPresences }) => {
+        console.log("join", key, newPresences);
+      })
+      .on("presence", { event: "leave" }, ({ key, leftPresences }) => {
+        console.log("leave", key, leftPresences);
+      })
       .on("broadcast", { event: "new_question" }, (payload) => {
         console.log("new_question", payload);
         if (payload.payload) {
