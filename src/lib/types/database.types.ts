@@ -148,7 +148,7 @@ export type Database = {
           groupid: string
           id: string
           metadata: Json | null
-          questions: string[]
+          questions: string[] | null
         }
         Insert: {
           created_at?: string
@@ -156,7 +156,7 @@ export type Database = {
           groupid: string
           id?: string
           metadata?: Json | null
-          questions: string[]
+          questions?: string[] | null
         }
         Update: {
           created_at?: string
@@ -164,7 +164,7 @@ export type Database = {
           groupid?: string
           id?: string
           metadata?: Json | null
-          questions?: string[]
+          questions?: string[] | null
         }
         Relationships: [
           {
@@ -179,6 +179,7 @@ export type Database = {
       games_answers: {
         Row: {
           answer: string
+          correct: number | null
           created_at: string
           gameid: string
           id: string
@@ -187,6 +188,7 @@ export type Database = {
         }
         Insert: {
           answer: string
+          correct?: number | null
           created_at?: string
           gameid: string
           id?: string
@@ -195,6 +197,7 @@ export type Database = {
         }
         Update: {
           answer?: string
+          correct?: number | null
           created_at?: string
           gameid?: string
           id?: string
@@ -632,6 +635,12 @@ export type Database = {
         }
         Returns: Json
       }
+      get_game_status: {
+        Args: {
+          p_gameid: string
+        }
+        Returns: string
+      }
       get_group_role: {
         Args: {
           group_id: string
@@ -699,6 +708,16 @@ export type Database = {
         Returns: {
           groupid: string
         }[]
+      }
+      insert_game_answer: {
+        Args: {
+          p_userid: string
+          p_gameid: string
+          p_questionid: string
+          p_answer: string
+          p_question_index: number
+        }
+        Returns: undefined
       }
       is_backup_running: {
         Args: Record<PropertyKey, never>

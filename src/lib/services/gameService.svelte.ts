@@ -23,7 +23,7 @@ export const getOpenGamesForGroup = async (groupId: string) => {
         .from("games")
         .select("*")
         .eq("groupid", groupId)
-        .eq("gamestate", "open");
+        .in("gamestate", ["open", "started"]);
 
     return { data, error };
 };
@@ -73,6 +73,18 @@ export const saveAnswer = async (
 
     if (error) {
         console.error("Error saving answer:", error);
+    }
+    return data;
+};
+
+export const getGameStatus = async (gameId: string) => {
+    const { data, error } = await supabase.rpc("get_game_status", {
+        p_gameid: gameId,
+    }).single();
+
+    if (error) {
+        console.error("Error fetching game status:", error);
+        return null;
     }
     return data;
 };

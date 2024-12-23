@@ -128,6 +128,24 @@ $$;
 ALTER FUNCTION "public"."find_and_insert_similar_questions"("offset_val" integer) OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."get_game_status"("p_gameid" "uuid") RETURNS "text"
+    LANGUAGE "plpgsql"
+    AS $$
+BEGIN
+    RETURN(
+        SELECT
+            gamestate
+        FROM
+            games
+        WHERE
+            id = p_gameid);
+END;
+$$;
+
+
+ALTER FUNCTION "public"."get_game_status"("p_gameid" "uuid") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."get_group_role"("group_id" "uuid") RETURNS "text"
     LANGUAGE "plpgsql" SECURITY DEFINER
     AS $$
@@ -346,6 +364,44 @@ $$;
 ALTER FUNCTION "public"."handle_new_user"() OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."insert_game_answer"("p_userid" "uuid", "p_gameid" "uuid", "p_questionid" "uuid", "p_answer" "text", "p_question_index" integer) RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+    v_keys text[];
+    v_real_answer text;
+BEGIN
+    -- Get the game keys
+    SELECT
+        keys INTO v_keys
+    FROM
+        games_keys
+    WHERE
+        id = p_gameid;
+    -- Translate the answer
+    CASE p_answer
+    WHEN 'a' THEN
+        v_real_answer := SUBSTRING(v_keys[p_question_index + 1], 1, 1);
+    WHEN 'b' THEN
+        v_real_answer := SUBSTRING(v_keys[p_question_index + 1], 2, 1);
+    WHEN 'c' THEN
+        v_real_answer := SUBSTRING(v_keys[p_question_index + 1], 3, 1);
+    WHEN 'd' THEN
+        v_real_answer := SUBSTRING(v_keys[p_question_index + 1], 4, 1);
+    ELSE
+        RAISE EXCEPTION 'Invalid answer: %', p_answer;
+    END CASE;
+    -- Insert the answer into games_answers
+    INSERT INTO games_answers(userid, gameid, questionid, answer)
+        VALUES (p_userid, p_gameid, p_questionid, v_real_answer);
+        END;
+$$;
+
+
+ALTER FUNCTION "public"."insert_game_answer"("p_userid" "uuid", "p_gameid" "uuid", "p_questionid" "uuid", "p_answer" "text", "p_question_index" integer) OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."is_backup_running"() RETURNS boolean
     LANGUAGE "plpgsql"
     AS $$
@@ -467,7 +523,7 @@ CREATE TABLE IF NOT EXISTS "public"."games" (
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "groupid" "uuid" NOT NULL,
     "metadata" "jsonb",
-    "questions" "uuid"[] NOT NULL,
+    "questions" "uuid"[],
     "gamestate" "text" DEFAULT 'open'::"text"
 );
 
@@ -481,7 +537,8 @@ CREATE TABLE IF NOT EXISTS "public"."games_answers" (
     "gameid" "uuid" NOT NULL,
     "userid" "uuid" NOT NULL,
     "questionid" "uuid" NOT NULL,
-    "answer" "text" NOT NULL
+    "answer" "text" NOT NULL,
+    "correct" numeric
 );
 
 
@@ -1013,6 +1070,10 @@ CREATE POLICY "sender or recipients can view" ON "public"."messages" FOR SELECT 
 ALTER TABLE "public"."similar_questions" ENABLE ROW LEVEL SECURITY;
 
 
+CREATE POLICY "users can insert their own answers" ON "public"."games_answers" FOR INSERT WITH CHECK (("userid" = ( SELECT "auth"."uid"() AS "uid")));
+
+
+
 CREATE POLICY "users can modify their own profile" ON "public"."profiles" FOR UPDATE USING (("id" = "auth"."uid"())) WITH CHECK (("id" = "auth"."uid"()));
 
 
@@ -1025,6 +1086,10 @@ CREATE POLICY "users can view profiles from invite creators" ON "public"."profil
 CREATE POLICY "users can view their group's games" ON "public"."games" FOR SELECT TO "authenticated" USING ((( SELECT "count"(*) AS "count"
    FROM "public"."groups_users"
   WHERE (("groups_users"."userid" = ( SELECT "auth"."uid"() AS "uid")) AND ("groups_users"."groupid" = "games"."groupid"))) > 0));
+
+
+
+CREATE POLICY "users can view their own answers" ON "public"."games_answers" FOR SELECT USING (("userid" = ( SELECT "auth"."uid"() AS "uid")));
 
 
 
@@ -1058,6 +1123,12 @@ GRANT ALL ON FUNCTION "public"."accept_invite"("invite_id" "uuid") TO "service_r
 GRANT ALL ON FUNCTION "public"."find_and_insert_similar_questions"("offset_val" integer) TO "anon";
 GRANT ALL ON FUNCTION "public"."find_and_insert_similar_questions"("offset_val" integer) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."find_and_insert_similar_questions"("offset_val" integer) TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."get_game_status"("p_gameid" "uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."get_game_status"("p_gameid" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_game_status"("p_gameid" "uuid") TO "service_role";
 
 
 
@@ -1104,6 +1175,12 @@ GRANT ALL ON FUNCTION "public"."get_user_groupids"("p_userid" "uuid") TO "servic
 GRANT ALL ON FUNCTION "public"."handle_new_user"() TO "anon";
 GRANT ALL ON FUNCTION "public"."handle_new_user"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."handle_new_user"() TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."insert_game_answer"("p_userid" "uuid", "p_gameid" "uuid", "p_questionid" "uuid", "p_answer" "text", "p_question_index" integer) TO "anon";
+GRANT ALL ON FUNCTION "public"."insert_game_answer"("p_userid" "uuid", "p_gameid" "uuid", "p_questionid" "uuid", "p_answer" "text", "p_question_index" integer) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."insert_game_answer"("p_userid" "uuid", "p_gameid" "uuid", "p_questionid" "uuid", "p_answer" "text", "p_question_index" integer) TO "service_role";
 
 
 

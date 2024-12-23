@@ -29,13 +29,13 @@ export async function handleGamePlay(req: Request) {
     }
 
     // 3. Get the game record from the games table
-    const { data: game, error: gameError } = await supabase
+    const { data: gameData, error: gameError } = await supabase
         .from("games")
-        .select("metadata")
+        .select("metadata, gamestate")
         .eq("id", gameid)
         .single();
 
-    if (gameError || !game) {
+    if (gameError || !gameData) {
         console.log("Failed to get game record");
         return new Response(
             JSON.stringify({ error: "Failed to get game record" }),
@@ -47,7 +47,7 @@ export async function handleGamePlay(req: Request) {
     }
 
     // 4. Get the questions from the metadata
-    const questions = game.metadata?.questions;
+    const questions = gameData.metadata?.questions;
     if (!questions || !Array.isArray(questions) || questions.length === 0) {
         console.log("No questions found in game metadata");
         return new Response(
@@ -61,5 +61,29 @@ export async function handleGamePlay(req: Request) {
 
     const channel = supabase.channel(gameid);
 
-    await setupGameChannel(channel, gameid, userid, questions, game);
+    // Update the game state to "started"
+    const { error: updateError } = await supabase
+        .from("games")
+        .update({ gamestate: "started" })
+        .eq("id", gameid);
+
+    if (updateError) {
+        console.error("Error updating game state:", updateError);
+        return new Response(
+            JSON.stringify({ error: "Error updating game state" }),
+            {
+                headers: { ...corsHeaders, "Content-Type": "application/json" },
+                status: 500,
+            },
+        );
+    }
+
+    const game = {
+        channel,
+        id: gameid,
+        questions,
+        gamestate: gameData.gamestate,
+    };
+
+    await setupGameChannel(game);
 }

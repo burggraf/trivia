@@ -1,13 +1,7 @@
 import { supabase } from "../../_shared/supabase_client.ts";
 import { broadcastQuestion } from "./game-broadcast.ts";
 
-export const setupGameChannel = async (
-    channel: any,
-    gameid: string,
-    userid: string,
-    questions: any[],
-    game: any,
-) => {
+export const setupGameChannel = async (game: any) => {
     let currentQuestionIndex = 0;
     const users: {
         [userId: string]: {
@@ -17,37 +11,101 @@ export const setupGameChannel = async (
                 answer: string;
                 isCorrect: boolean;
             }[];
+            active: boolean;
         };
     } = {};
     const userAnswers: { [questionId: string]: { [userId: string]: string } } =
         {};
 
-    channel.subscribe(
+    const handlePresence = async (presence: {
+        joins?: { [key: string]: any }[] | null;
+        leaves?: { [key: string]: any }[] | null;
+    }) => {
+        /**
+         * presence.joins [
+            [
+                {
+                "df3a3ae0-ee63-4679-902e-20c669688ce2:1734913133423": { online_at: "2024-12-23T00:18:53.397Z" },
+                presence_ref: "GBOmTY3U0sCVTGbB"
+                }
+            ]
+        ]
+
+           */
+        console.log("handlePresence", presence);
+        let hasChanges = false;
+
+        if (presence.joins) {
+            console.log("presence.joins", presence.joins);
+            for (const joinsArray of presence.joins) {
+                const key = Object.keys(joinsArray[0])[0];
+                console.log("**** key is: ", key);
+                console.log("presence.joins key", key);
+                const userId = key ? key.split(":")[0] : key;
+                if (!users[userId]) {
+                    const { data: profile, error: profileError } =
+                        await supabase
+                            .from("profiles")
+                            .select("firstname, lastname")
+                            .eq("id", userId)
+                            .single();
+
+                    if (profileError) {
+                        console.error(
+                            "Error fetching profile:",
+                            profileError,
+                        );
+                        users[userId] = {
+                            user: { id: userId },
+                            answers: [],
+                            active: true,
+                        };
+                    } else {
+                        users[userId] = {
+                            user: { id: userId, ...profile },
+                            answers: [],
+                            active: true,
+                        };
+                    }
+                } else {
+                    users[userId].active = true;
+                }
+            }
+        }
+
+        if (presence.leaves) {
+            console.log("presence.leaves", presence.leaves);
+            for (const leavesArray of presence.leaves) {
+                const key = Object.keys(leavesArray)[0];
+                const userId = key ? key.split(":")[0] : key;
+                if (users[userId]) {
+                    users[userId].active = false;
+                }
+            }
+        }
+        if (hasChanges) {
+            // Broadcast the users object
+        }
+
+        game.channel.send({
+            type: "broadcast",
+            event: "current_status",
+            payload: {
+                users,
+                question: game.questions[currentQuestionIndex],
+                currentQuestionIndex,
+            },
+        });
+    };
+    game.channel.subscribe(
         async (
             status: "SUBSCRIBED" | "CHANNEL_ERROR" | "TIMED_OUT" | "CLOSED",
         ) => {
             if (status === "SUBSCRIBED") {
-                // Initialize user in users object
-                const { data: profile, error: profileError } = await supabase
-                    .from("profiles")
-                    .select("firstname, lastname")
-                    .eq("id", userid)
-                    .single();
-
-                if (profileError) {
-                    console.error("Error fetching profile:", profileError);
-                    users[userid] = { user: { id: userid }, answers: [] };
-                } else {
-                    users[userid] = {
-                        user: { id: userid, ...profile },
-                        answers: [],
-                    };
-                }
-
                 // Broadcast the first question
                 broadcastQuestion(
-                    channel,
-                    questions[currentQuestionIndex],
+                    game.channel,
+                    game.questions[currentQuestionIndex],
                     currentQuestionIndex,
                 );
                 startQuestionTimer(currentQuestionIndex);
@@ -55,29 +113,66 @@ export const setupGameChannel = async (
         },
     );
 
-    channel.on(
+    game.channel
+        .on("presence", { event: "sync" }, () => {
+            const newState = game.channel.presenceState();
+            console.log("sync", newState);
+        })
+        .on(
+            "presence",
+            { event: "join" },
+            (
+                { key, newPresences }: {
+                    key: string;
+                    newPresences: { [key: string]: any };
+                },
+            ) => {
+                console.log("join", key, newPresences);
+                handlePresence({ joins: [newPresences], leaves: undefined });
+            },
+        )
+        .on(
+            "presence",
+            { event: "leave" },
+            (
+                { key, leftPresences }: {
+                    key: string;
+                    leftPresences: { [key: string]: any };
+                },
+            ) => {
+                console.log("leave", key, leftPresences);
+                handlePresence({ joins: undefined, leaves: [leftPresences] });
+            },
+        );
+
+    game.channel.on(
         "broadcast",
         { event: "answer_submitted" },
         async (
-            payload: { payload: { questionId: string; answer: string } },
+            payload: {
+                payload: { questionId: string; answer: string; userid: string };
+            },
         ) => {
+            console.log("answer_submitted", payload);
             if (payload?.payload) {
-                const { questionId, answer } = payload.payload;
-                console.log("answer_submitted", payload.payload);
+                const { questionId, answer, userid } = payload.payload;
+                console.log("answer_submitted questionId", questionId);
+                console.log("answer_submitted answer", answer);
+                console.log("answer_submitted userid", userid);
 
                 // Create a games_answers record
                 const { error: insertError } = await supabase
                     .from("games_answers")
                     .insert({
-                        gameid,
+                        gameid: game.id,
                         userid,
                         questionid: questionId,
                         answer,
-                        correct:
-                            questions[currentQuestionIndex].correct_answer ===
-                                    answer
-                                ? 1
-                                : 0,
+                        correct: game.questions[currentQuestionIndex]
+                                .correct_answer ===
+                                answer
+                            ? 1
+                            : 0,
                     });
 
                 if (insertError) {
@@ -86,13 +181,31 @@ export const setupGameChannel = async (
                 }
 
                 // Track user answers
+                console.log("track user answers");
                 if (!userAnswers[questionId]) {
+                    console.log("*** create userAnswers[questionId]");
                     userAnswers[questionId] = {};
+                    console.log("done");
+                } else {
+                    console.log("*** userAnswers[questionId] exists");
                 }
                 const isCorrect =
-                    questions[currentQuestionIndex].correct_answer === answer;
-
+                    game.questions[currentQuestionIndex].correct_answer ===
+                        answer;
+                console.log("isCorrect", isCorrect);
                 // Update user's answers
+                console.log("users", users);
+                if (!users[userid].answers) {
+                    console.log("*** create users[userid].answers");
+                    users[userid].answers = [];
+                } else {
+                    console.log("*** users[userid].answers exists");
+                }
+                console.log("users[userid].answers.push", {
+                    questionIndex: currentQuestionIndex,
+                    answer,
+                    isCorrect,
+                });
                 users[userid].answers.push({
                     questionIndex: currentQuestionIndex,
                     answer,
@@ -102,26 +215,38 @@ export const setupGameChannel = async (
                 userAnswers[questionId][userid] = answer;
 
                 // Broadcast the users object
-                channel.send({
-                    type: "broadcast",
-                    event: "users_update",
-                    payload: { users },
-                });
+                sendCurrentStatus();
 
-                channel.send({
+                game.channel.send({
                     type: "broadcast",
                     event: "answer_result",
                     payload: {
                         correctAnswer:
-                            questions[currentQuestionIndex].correct_answer,
-                        isCorrect:
-                            questions[currentQuestionIndex].correct_answer ===
-                                answer,
+                            game.questions[currentQuestionIndex].correct_answer,
+                        isCorrect: game.questions[currentQuestionIndex]
+                            .correct_answer ===
+                            answer,
                     },
                 });
             }
         },
     );
+    game.channel.on("broadcast", { event: "get_status" }, () => {
+        // console.log("got get_status event");
+        sendCurrentStatus();
+    });
+
+    const sendCurrentStatus = () => {
+        game.channel.send({
+            type: "broadcast",
+            event: "current_status",
+            payload: {
+                users,
+                question: game.questions[currentQuestionIndex],
+                currentQuestionIndex,
+            },
+        });
+    };
 
     const startQuestionTimer = (currentQuestionIndex: number) => {
         let timerId: number | null = null;
@@ -131,12 +256,12 @@ export const setupGameChannel = async (
         timerId = setTimeout(async () => {
             timerId = null;
             // Broadcast the correct answer
-            channel.send({
+            game.channel.send({
                 type: "broadcast",
                 event: "answer_result",
                 payload: {
                     correctAnswer:
-                        questions[currentQuestionIndex].correct_answer,
+                        game.questions[currentQuestionIndex].correct_answer,
                     isCorrect: false,
                 },
             });
@@ -148,6 +273,8 @@ export const setupGameChannel = async (
         }, questionTimeout);
 
         const checkAllUsersAnswered = async () => {
+            console.log("Checking if all users have answered");
+            console.log("users", users);
             const allUsersAnswered = Object.keys(users).every(
                 (userId) =>
                     users[userId].answers.some(
@@ -174,11 +301,11 @@ export const setupGameChannel = async (
     };
 
     const broadcastNextQuestion = async () => {
-        if (currentQuestionIndex < questions.length - 1) {
+        if (currentQuestionIndex < game.questions.length - 1) {
             currentQuestionIndex++;
             broadcastQuestion(
-                channel,
-                questions[currentQuestionIndex],
+                game.channel,
+                game.questions[currentQuestionIndex],
                 currentQuestionIndex,
             );
             startQuestionTimer(currentQuestionIndex);
@@ -190,19 +317,21 @@ export const setupGameChannel = async (
                 .update({
                     metadata: { ...game.metadata, user_answers: userAnswers },
                 })
-                .eq("id", gameid);
+                .eq("id", game.id);
 
             if (updateError) {
                 console.error("Error updating game metadata:", updateError);
                 return;
             }
 
-            channel.send({
+            game.channel.send({
                 type: "broadcast",
                 event: "game_over",
                 payload: { message: "Game over!" },
             });
-            channel.unsubscribe();
+            game.channel.unsubscribe();
         }
     };
+    console.log("Game channel setup complete, calling sendCurrentStatus()");
+    sendCurrentStatus();
 };
