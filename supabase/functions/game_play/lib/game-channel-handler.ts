@@ -32,15 +32,11 @@ export const setupGameChannel = async (game: any) => {
         ]
 
            */
-        console.log("handlePresence", presence);
         let hasChanges = false;
 
         if (presence.joins) {
-            console.log("presence.joins", presence.joins);
             for (const joinsArray of presence.joins) {
                 const key = Object.keys(joinsArray[0])[0];
-                console.log("**** key is: ", key);
-                console.log("presence.joins key", key);
                 const userId = key ? key.split(":")[0] : key;
                 if (!users[userId]) {
                     const { data: profile, error: profileError } =
@@ -74,7 +70,6 @@ export const setupGameChannel = async (game: any) => {
         }
 
         if (presence.leaves) {
-            console.log("presence.leaves", presence.leaves);
             for (const leavesArray of presence.leaves) {
                 const key = Object.keys(leavesArray)[0];
                 const userId = key ? key.split(":")[0] : key;
@@ -116,7 +111,6 @@ export const setupGameChannel = async (game: any) => {
     game.channel
         .on("presence", { event: "sync" }, () => {
             const newState = game.channel.presenceState();
-            console.log("sync", newState);
         })
         .on(
             "presence",
@@ -127,7 +121,6 @@ export const setupGameChannel = async (game: any) => {
                     newPresences: { [key: string]: any };
                 },
             ) => {
-                console.log("join", key, newPresences);
                 handlePresence({ joins: [newPresences], leaves: undefined });
             },
         )
@@ -140,7 +133,6 @@ export const setupGameChannel = async (game: any) => {
                     leftPresences: { [key: string]: any };
                 },
             ) => {
-                console.log("leave", key, leftPresences);
                 handlePresence({ joins: undefined, leaves: [leftPresences] });
             },
         );
@@ -153,12 +145,8 @@ export const setupGameChannel = async (game: any) => {
                 payload: { questionId: string; answer: string; userid: string };
             },
         ) => {
-            console.log("answer_submitted", payload);
             if (payload?.payload) {
                 const { questionId, answer, userid } = payload.payload;
-                console.log("answer_submitted questionId", questionId);
-                console.log("answer_submitted answer", answer);
-                console.log("answer_submitted userid", userid);
 
                 // Create a games_answers record
                 const { error: insertError } = await supabase
@@ -181,31 +169,16 @@ export const setupGameChannel = async (game: any) => {
                 }
 
                 // Track user answers
-                console.log("track user answers");
                 if (!userAnswers[questionId]) {
-                    console.log("*** create userAnswers[questionId]");
                     userAnswers[questionId] = {};
-                    console.log("done");
-                } else {
-                    console.log("*** userAnswers[questionId] exists");
                 }
                 const isCorrect =
                     game.questions[currentQuestionIndex].correct_answer ===
                         answer;
-                console.log("isCorrect", isCorrect);
                 // Update user's answers
-                console.log("users", users);
                 if (!users[userid].answers) {
-                    console.log("*** create users[userid].answers");
                     users[userid].answers = [];
-                } else {
-                    console.log("*** users[userid].answers exists");
                 }
-                console.log("users[userid].answers.push", {
-                    questionIndex: currentQuestionIndex,
-                    answer,
-                    isCorrect,
-                });
                 users[userid].answers.push({
                     questionIndex: currentQuestionIndex,
                     answer,
@@ -232,7 +205,6 @@ export const setupGameChannel = async (game: any) => {
         },
     );
     game.channel.on("broadcast", { event: "get_status" }, () => {
-        // console.log("got get_status event");
         sendCurrentStatus();
     });
 
@@ -273,14 +245,19 @@ export const setupGameChannel = async (game: any) => {
         }, questionTimeout);
 
         const checkAllUsersAnswered = async () => {
-            console.log("Checking if all users have answered");
-            console.log("users", users);
-            const allUsersAnswered = Object.keys(users).every(
-                (userId) =>
-                    users[userId].answers.some(
-                        (answer) =>
-                            answer.questionIndex === currentQuestionIndex,
-                    ),
+            const idx = currentQuestionIndex - 1;
+
+            const allUsersAnswered = Object.values(users).every(
+                (user) => {
+                    if (!user.active) {
+                        return true;
+                    }
+                    // search the answers array for the current question index
+                    const found = user.answers.some(
+                        (answer) => answer.questionIndex === idx,
+                    );
+                    return found;
+                },
             );
 
             if (allUsersAnswered) {
