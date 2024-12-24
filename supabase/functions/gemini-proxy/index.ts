@@ -19,10 +19,22 @@ serve(async (req: Request) => {
     }
 
     try {
-        const { prompt } = await req.json();
-
-        if (!prompt) {
-            return new Response("Prompt is required.", {
+        const requestBody = await req.json();
+        console.log("Received request body:", requestBody);
+        const { contents } = requestBody;
+        const promptPart = contents[0].parts.find((part: any) => part.text);
+        const imagePart = contents[0].parts.find((part: any) =>
+            part.inline_data
+        );
+        const prompt = promptPart?.text;
+        const image = imagePart?.inline_data?.data;
+        console.log("Extracted prompt:", prompt);
+        console.log(
+            "Extracted image (first 50 chars):",
+            image?.substring(0, 50),
+        );
+        if (!prompt && !image) {
+            return new Response("Prompt or image is required.", {
                 status: 400,
                 headers: corsHeaders,
             });
@@ -36,21 +48,48 @@ serve(async (req: Request) => {
             body: JSON.stringify({
                 contents: [
                     {
-                        parts: [{ text: prompt }],
+                        parts: [
+                            ...(prompt ? [{ text: prompt }] : []),
+                            ...(image
+                                ? [
+                                    {
+                                        inline_data: {
+                                            mime_type: "image/jpeg", // Assuming JPEG, adjust if needed
+                                            data: image,
+                                        },
+                                    },
+                                ]
+                                : []),
+                        ],
                     },
                 ],
             }),
         });
 
+        console.log("Gemini API Response Headers:", response.headers);
+        const responseText = await response.text();
+        console.log("Gemini API Raw Response:", responseText);
+
         if (!response.ok) {
-            const error = await response.json();
-            return new Response(JSON.stringify(error), {
-                status: response.status,
-                headers: { ...corsHeaders, "Content-Type": "application/json" },
-            });
+            try {
+                const error = JSON.parse(responseText);
+                return new Response(JSON.stringify(error), {
+                    status: response.status,
+                    headers: {
+                        ...corsHeaders,
+                        "Content-Type": "application/json",
+                    },
+                });
+            } catch (e) {
+                console.error("Failed to parse error response:", e);
+                return new Response(responseText, {
+                    status: response.status,
+                    headers: { ...corsHeaders, "Content-Type": "text/plain" },
+                });
+            }
         }
 
-        const data = await response.json();
+        const data = JSON.parse(responseText);
         return new Response(JSON.stringify(data), {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
