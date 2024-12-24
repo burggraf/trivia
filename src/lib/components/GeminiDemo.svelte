@@ -4,11 +4,18 @@
   let prompt = $state("");
   let response = $state("");
   let loading = $state(false);
+  let promptTokenCount = $state(0);
+  let candidatesTokenCount = $state(0);
+  let totalTokenCount = $state(0);
   let imageFile = $state<File | null>(null);
+  let errorMessage = $state<string | null>(null);
 
   async function sendMessage() {
     loading = true;
-    const initialResponse = response; // Store previous response
+    response = await callGemini(imageFile, prompt);
+  }
+
+  async function callGemini(imageFile: File | null, prompt: string) {
     let base64Image: string | null = null;
 
     if (imageFile) {
@@ -21,11 +28,6 @@
       });
     }
 
-    await callGemini(base64Image, prompt);
-    response = initialResponse + "\\n\\n" + response; // Append new response
-  }
-
-  async function callGemini(base64Image: string | null, prompt: string) {
     try {
       const { data, error } = await supabase.functions.invoke("gemini-proxy", {
         body: {
@@ -51,10 +53,19 @@
 
       if (error) {
         console.error("Error calling Gemini API", error);
-        response += "\\n\\nError calling Gemini API.";
+        errorMessage = error.message;
+        return "";
       } else {
-        response += "\\n\\n" + JSON.stringify(data, null, 2);
+        console.log("Gemini API response", data);
+        promptTokenCount = data.usageMetadata.promptTokenCount;
+        candidatesTokenCount = data.usageMetadata.candidatesTokenCount;
+        totalTokenCount = data.usageMetadata.totalTokenCount;
+        const res = JSON.stringify(data, null, 2);
+        return res;
       }
+    } catch (e: any) {
+      errorMessage = e.message;
+      return "";
     } finally {
       loading = false;
     }
@@ -90,8 +101,18 @@
 
 {#if response}
   <div class="mt-4 p-4 border rounded-md">
-    {response}
+    {JSON.parse(response)?.candidates?.[0]?.content?.parts?.[0]?.text}
   </div>
+{/if}
+
+{#if promptTokenCount > 0}
+  <div class="mt-2">Prompt Tokens: {promptTokenCount}</div>
+{/if}
+{#if candidatesTokenCount > 0}
+  <div class="mt-2">Response Tokens: {candidatesTokenCount}</div>
+{/if}
+{#if totalTokenCount > 0}
+  <div class="mt-2">Total Tokens: {totalTokenCount}</div>
 {/if}
 
 {#if imageFile && !loading}
