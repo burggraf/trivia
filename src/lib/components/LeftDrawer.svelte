@@ -42,6 +42,10 @@
             title: "Play Game",
             url: "/games",
           },
+          {
+            title: "Mm",
+            url: "/mm",
+          },
         ],
       },
       {
