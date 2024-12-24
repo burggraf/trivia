@@ -1,5 +1,6 @@
 <script lang="ts">
   import PageTemplate from "$lib/components/PageTemplate.svelte";
+  import GeminiDemo from "$lib/components/GeminiDemo.svelte";
   /*
   const actionItems: any[] = [
     {
@@ -25,7 +26,7 @@
   <!--{#snippet TopRight()}{/snippet}-->
 
   {#snippet Middle()}
-    This is a test page
+    <GeminiDemo />
   {/snippet}
 
   <!--{#snippet BottomLeft()}{/snippet}-->
