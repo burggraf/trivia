@@ -1,7 +1,8 @@
 <script lang="ts">
   import { supabase } from "$lib/services/supabase";
+  import HtmlContent from "./HtmlContent.svelte";
 
-  let prompt = $state("");
+  let prompt = $state("Describe the image");
   let response = $state("");
   let loading = $state(false);
   let promptTokenCount = $state(0);
@@ -29,7 +30,7 @@
     }
 
     try {
-      const { data, error } = await supabase.functions.invoke("gemini-proxy", {
+      const res = await supabase.functions.invoke("gemini-proxy", {
         body: {
           contents: [
             {
@@ -51,17 +52,16 @@
         },
       });
 
-      if (error) {
-        console.error("Error calling Gemini API", error);
-        errorMessage = error.message;
+      if (res.error) {
+        console.error("Error calling Gemini API", res.error);
+        errorMessage = res.error.message;
         return "";
       } else {
-        console.log("Gemini API response", data);
-        promptTokenCount = data.usageMetadata.promptTokenCount;
-        candidatesTokenCount = data.usageMetadata.candidatesTokenCount;
-        totalTokenCount = data.usageMetadata.totalTokenCount;
-        const res = JSON.stringify(data, null, 2);
-        return res;
+        console.log("Gemini API response", res.data);
+        promptTokenCount = res.data.usageMetadata.promptTokenCount;
+        candidatesTokenCount = res.data.usageMetadata.candidatesTokenCount;
+        totalTokenCount = res.data.usageMetadata.totalTokenCount;
+        return res.data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
       }
     } catch (e: any) {
       errorMessage = e.message;
@@ -98,10 +98,9 @@
     {/if}
   </button>
 </div>
-
 {#if response}
   <div class="mt-4 p-4 border rounded-md">
-    {JSON.parse(response)?.candidates?.[0]?.content?.parts?.[0]?.text}
+    <HtmlContent content={response} />
   </div>
 {/if}
 

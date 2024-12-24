@@ -1,9 +1,13 @@
 <script lang="ts">
+  import { marked } from "marked";
+
   let { content = "" } = $props();
+
+  let parsedContent = $derived(marked.parse(content));
 </script>
 
 <div class="html-content">
-  {@html content}
+  {@html parsedContent}
 </div>
 
 <style>
@@ -37,7 +41,8 @@
     line-height: 1.5;
   }
 
-  .html-content :global(ul), .html-content :global(ol) {
+  .html-content :global(ul),
+  .html-content :global(ol) {
     margin: 1em 0;
     padding-left: 40px;
   }
@@ -95,7 +100,8 @@
     margin: 1em 0;
   }
 
-  .html-content :global(th), .html-content :global(td) {
+  .html-content :global(th),
+  .html-content :global(td) {
     border: 1px solid #ddd;
     padding: 8px;
     text-align: left;
