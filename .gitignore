@@ -32,3 +32,6 @@ static/apple-touch-icon.png
 # Capacitor
 capacitor.config.ts
 
+# Docs
+/docs
+
